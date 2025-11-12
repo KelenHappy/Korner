@@ -3,7 +3,7 @@
         <ScreenshotOverlay
             v-if="showScreenshotOverlay"
             @screenshot-captured="handleScreenshotCaptured"
-            @cancel="showScreenshotOverlay = false"
+            @cancel="cancelScreenshot"
         />
         <FirstRunGuide v-if="showFirstRunGuide" @close="closeFirstRunGuide" />
         <div
@@ -112,6 +112,11 @@ import ScreenshotOverlay from "./components/ScreenshotOverlay.vue";
 import QueryWindow from "./components/QueryWindow.vue";
 import ResponseWindow from "./components/ResponseWindow.vue";
 import FirstRunGuide from "./components/FirstRunGuide.vue";
+import {
+    WindowSetAlwaysOnTop,
+    WindowFullscreen,
+    WindowUnfullscreen,
+} from "@wailsapp/runtime";
 
 export default {
     name: "App",
@@ -160,13 +165,24 @@ export default {
             if (!isFirstRun && platform.value === "linux") {
                 showFirstRunGuide.value = true;
             }
+            try {
+                WindowSetAlwaysOnTop(true);
+            } catch (e) {
+                // ignore if not running under Wails runtime
+            }
         });
 
         const hotkey = computed(() =>
             platform.value === "darwin" ? "Cmd+Option+Q" : "Ctrl+Alt+Q",
         );
 
-        const triggerScreenshot = () => {
+        const triggerScreenshot = async () => {
+            try {
+                WindowSetAlwaysOnTop(true);
+            } catch (e) {}
+            try {
+                WindowFullscreen();
+            } catch (e) {}
             showScreenshotOverlay.value = true;
         };
 
@@ -176,6 +192,16 @@ export default {
                 timestamp: new Date(),
             };
             showScreenshotOverlay.value = false;
+            try {
+                WindowUnfullscreen();
+            } catch (e) {}
+        };
+
+        const cancelScreenshot = () => {
+            showScreenshotOverlay.value = false;
+            try {
+                WindowUnfullscreen();
+            } catch (e) {}
         };
 
         const handleQuerySubmit = async (queryText) => {
@@ -250,6 +276,7 @@ export default {
             isLoadingResponse,
             hotkey,
             triggerScreenshot,
+            cancelScreenshot,
             handleScreenshotCaptured,
             handleQuerySubmit,
             pinResponse,

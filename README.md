@@ -1,14 +1,13 @@
 # 軟體需求規格書（SRS）
 ## 專案名稱：**Korner — 跨平台全域截圖提問助理**
 > 一鍵截圖 / AI 提問 → 即時回應
-> 支援 Windows / macOS / Linux（GNOME & KDE via Flatpak）
+> 支援 Windows / macOS
 
 ### 1. 項目簡介
 Korner 是一款輕量級 Agentic AI 桌面助理，讓使用者無需切換瀏覽器或多個應用，直接透過全域快捷鍵（預設 `Ctrl+Alt+Q` / `Cmd+Option+Q`）截圖並向 **AMD Instinct MI300X GPU 上的 GPT OSS 120B 模型** 提問（例如：「解釋這段程式碼」、「找出圖表錯誤」）或點開懸浮的icon進行提問或截圖。
 本專案完整支援三大平台：
 - **Windows 10/11**
 - **macOS 12+ (Apple Silicon & Intel)**
-- **Linux — 僅限 GNOME 42+ 與 KDE Plasma 5.24+，以 Flatpak 發佈**
 
 所有請求透過 OpenAI API 相容格式發送至 AMD 提供的 LLM 端點，展現 **「感知 → 思考 → 行動」** 的 Agentic 能力。
 
@@ -39,27 +38,6 @@ Korner 是一款輕量級 Agentic AI 桌面助理，讓使用者無需切換瀏�
   - 需在 `Info.plist` 聲明 `Accessibility` 權限（首次啟動引導使用者授權）
 - **打包**：`wails build` 產出 `.app`，支援 Apple Silicon 與 Intel 雙架構（Universal Binary）
 
-#### 3.3 Linux（GNOME / KDE + Flatpak）
-- **截圖**：透過 `org.freedesktop.portal.Screenshot`（D-Bus + xdg-desktop-portal）
-  - 自動適配 Wayland/X11，由桌面環境提供原生 UI
-- **全域熱鍵**：
-  - 因 Flatpak 沙盒限制，**不自動註冊熱鍵**
-  - **首次啟動時顯示教學**：引導使用者至 GNOME Settings 或 KDE System Settings 手動新增快捷鍵，命令為：
-    ```bash
-    flatpak run com.korner.Korner --screenshot
-    ```
-  - 同時提供 **system tray icon** 點擊觸發（相容 GNOME Shell Extensions / KDE）
-- **打包**：
-  - 使用 `flatpak-builder` 打包
-  - runtime: `org.freedesktop.Platform//23.08`
-  - 宣告權限：
-    ```ini
-    --socket=wayland
-    --socket=fallback-x11
-    --device=dri
-    --talk-name=org.freedesktop.portal.Desktop
-    ```
-
 ---
 
 ### 4. 架構與開發技術
@@ -72,8 +50,7 @@ Korner 是一款輕量級 Agentic AI 桌面助理，讓使用者無需切換瀏�
 | LLM 連接 | 發送 OpenAI API 格式至 AMD 提供的 GPT OSS 120B Vision 端點 |
 | 部署 |
   - Windows: `.exe`
-  - macOS: `.app` (Universal)
-  - Linux: Flatpak（支援 Flathub 提交） |
+  - macOS: `.app` (Universal) |
 
 ---
 
@@ -108,7 +85,6 @@ Korner 是一款輕量級 Agentic AI 桌面助理，讓使用者無需切換瀏�
 - **可運行 Demo**：
   - Windows `.exe`
   - macOS `.app`
-  - Linux `.flatpak`（或 Flathub 測試安裝指令）
 - **Demo 影片（≤3 分鐘）**：展示三平台截圖提問流程
 - **文字說明（PDF/Markdown）**：簡述架構、創新點、如何重現
 
@@ -119,7 +95,4 @@ Korner 是一款輕量級 Agentic AI 桌面助理，讓使用者無需切換瀏�
 如需我協助產生：
 - Wails 專案結構
 - 各平台截圖程式碼範例
-- Flatpak manifest 檔案
 - OpenAI Vision API 呼叫格式（Go）
-README.md
-6 KB

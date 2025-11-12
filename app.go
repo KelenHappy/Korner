@@ -32,7 +32,6 @@ func (a *App) GetPlatform() string {
 // Platform implementations:
 // - macOS (darwin): Uses screencapture command (see app_screenshot_darwin.go)
 // - Windows: Planned (see app_screenshot_others.go stub)
-// - Linux: Planned via org.freedesktop.portal.Screenshot (see app_screenshot_others.go stub)
 //
 // Parameters:
 //
@@ -71,7 +70,5 @@ func (a *App) RegisterGlobalHotkey() error {
 	// TODO: Implement platform-specific global hotkey registration
 	// Windows: Use RegisterHotKey Win32 API
 	// macOS: Use Carbon Event Manager via CGO
-	// Linux: Users must manually configure in system settings
-
 	return nil
 }
