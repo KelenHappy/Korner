@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" fill="none">
+  <defs>
+    <linearGradient id="g" x1="16" y1="16" x2="112" y2="112" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3b82f6"/>
+      <stop offset="1" stop-color="#a855f7"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect x="8" y="8" width="112" height="112" rx="24" fill="url(#g)"/>
+
+  <!-- Camera body -->
+  <path d="M32 52c0-6.627 5.373-12 12-12h10.5a6 6 0 0 0 4.8-2.4l3.4-4.533A6 6 0 0 1 66.6 30h16.8a6 6 0 0 1 4.9 2.467L92 38h10c6.627 0 12 5.373 12 12v24c0 9.941-8.059 18-18 18H50c-9.941 0-18-8.059-18-18V52z"
+        stroke="#ffffff" stroke-width="6" fill="none" stroke-linejoin="round"/>
+
+  <!-- Lens -->
+  <circle cx="64" cy="70" r="18" stroke="#ffffff" stroke-width="6" fill="none"/>
+  <circle cx="64" cy="70" r="10" fill="#ffffff" fill-opacity="0.08"/>
+
+  <!-- Top-right sparkle -->
+  <path d="M96 32l2.2 5.5L104 40l-5.8 2.5L96 48l-2.2-5.5L88 40l5.8-2.5L96 32z" fill="#ffffff" fill-opacity="0.95"/>
+
+  <!-- Subtle bottom gloss -->
+  <path d="M20 96c8 8 22 12 44 12s36-4 44-12" stroke="#ffffff" stroke-opacity="0.08" stroke-width="8" stroke-linecap="round"/>
+</svg>

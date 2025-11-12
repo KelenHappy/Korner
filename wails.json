@@ -1,0 +1,48 @@
+{
+  "name": "SnapAsk",
+  "version": "1.0.0",
+  "description": "Cross-platform Screenshot AI Assistant",
+  "author": {
+    "name": "SnapAsk Team",
+    "email": "team@snapask.com"
+  },
+  "outputfilename": "snapask",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev": "npm run dev",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "http://localhost:34115",
+  "wailsjsdir": "./frontend",
+  "assetdir": "./frontend/dist",
+  "reloaddirs": "frontend/src",
+  "build:dir": "./build",
+  "info": {
+    "companyName": "SnapAsk",
+    "productName": "SnapAsk",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright © 2024 SnapAsk Team",
+    "comments": "AI-powered screenshot assistant using AMD GPT OSS 120B"
+  },
+  "linux": {
+    "icon": "build/appicon.png",
+    "deb": {
+      "package": {
+        "name": "snapask",
+        "description": "Cross-platform Screenshot AI Assistant powered by AMD GPT OSS 120B"
+      }
+    }
+  },
+  "windows": {
+    "icon": "build/appicon.ico",
+    "info": {
+      "icon": "build/appicon.ico"
+    }
+  },
+  "macos": {
+    "icon": "build/appicon.icns",
+    "info": {
+      "LSMinimumSystemVersion": "10.13.0",
+      "NSHumanReadableCopyright": "Copyright © 2024 SnapAsk Team"
+    }
+  }
+}
