@@ -1,13 +1,17 @@
 <template>
     <div id="app" class="h-screen w-screen overflow-hidden">
+        <!-- Fullscreen screenshot overlay -->
         <ScreenshotOverlay
             v-if="showScreenshotOverlay"
             @screenshot-captured="handleScreenshotCaptured"
             @cancel="cancelScreenshot"
         />
-        <FirstRunGuide v-if="showFirstRunGuide" @close="closeFirstRunGuide" />
+
+        <!-- First run guide -->
+
+        <!-- Main app UI - hidden in compact (floating) mode -->
         <div
-            v-if="!showScreenshotOverlay"
+            v-if="!showScreenshotOverlay && !compactMode"
             class="h-full w-full flex flex-col bg-gradient-to-br from-slate-50 to-slate-100"
         >
             <header
@@ -22,7 +26,7 @@
                         </div>
                         <div>
                             <h1 class="text-xl font-bold text-slate-800">
-                                SnapAsk
+                                Korner
                             </h1>
                             <p class="text-xs text-slate-500">
                                 AI Screenshot Assistant
@@ -37,6 +41,7 @@
                     </button>
                 </div>
             </header>
+
             <main class="flex-1 overflow-auto p-6">
                 <div class="max-w-4xl mx-auto">
                     <div
@@ -55,6 +60,7 @@
                             or click "New Screenshot" to start
                         </p>
                     </div>
+
                     <div
                         v-if="conversationHistory.length > 0"
                         class="space-y-4"
@@ -87,6 +93,7 @@
                             </div>
                         </div>
                     </div>
+
                     <QueryWindow
                         v-if="currentQuery"
                         :screenshot="currentQuery.screenshot"
@@ -96,11 +103,13 @@
                 </div>
             </main>
         </div>
+
+        <!-- Floating response window (visible in both normal & compact modes) -->
         <ResponseWindow
             v-if="showResponseWindow && latestResponse"
             :response="latestResponse"
             :loading="isLoadingResponse"
-            @close="showResponseWindow = false"
+            @close="closeResponseWindow"
             @pin="pinResponse"
         />
     </div>
@@ -111,12 +120,18 @@ import { ref, computed, onMounted } from "vue";
 import ScreenshotOverlay from "./components/ScreenshotOverlay.vue";
 import QueryWindow from "./components/QueryWindow.vue";
 import ResponseWindow from "./components/ResponseWindow.vue";
-import FirstRunGuide from "./components/FirstRunGuide.vue";
+
+// Wails Runtime: used for window management (always-on-top, resize, move, fullscreen)
 import {
     WindowSetAlwaysOnTop,
     WindowFullscreen,
     WindowUnfullscreen,
-} from "@wailsapp/runtime";
+    WindowGetSize,
+    WindowGetPosition,
+    WindowSetSize,
+    WindowSetPosition,
+    ScreenGetAll,
+} from "../wailsjs/runtime/runtime";
 
 export default {
     name: "App",
@@ -124,11 +139,9 @@ export default {
         ScreenshotOverlay,
         QueryWindow,
         ResponseWindow,
-        FirstRunGuide,
     },
     setup() {
         const showScreenshotOverlay = ref(false);
-        const showFirstRunGuide = ref(false);
         const currentQuery = ref(null);
         const conversationHistory = ref([]);
         const showResponseWindow = ref(false);
@@ -136,39 +149,34 @@ export default {
         const isLoadingResponse = ref(false);
         const platform = ref("unknown");
 
+        // Doubao-like compact floating mode
+        const compactMode = ref(false);
+        const prevSize = ref({ w: 0, h: 0 });
+        const prevPos = ref({ x: 0, y: 0 });
+
         onMounted(async () => {
-            // Try to get platform from Wails backend, fallback to userAgent detection
+            // Detect platform (from backend if available)
             try {
                 if (window.go && window.go.main && window.go.main.App) {
                     platform.value = await window.go.main.App.GetPlatform();
                 } else {
-                    // Fallback for dev mode or if backend not ready
                     const ua = navigator.userAgent.toLowerCase();
-                    if (ua.includes("linux")) platform.value = "linux";
-                    else if (ua.includes("mac")) platform.value = "darwin";
+                    if (ua.includes("mac")) platform.value = "darwin";
                     else if (ua.includes("win")) platform.value = "windows";
                     else platform.value = "unknown";
                 }
-            } catch (err) {
-                console.warn(
-                    "Failed to get platform from backend, using userAgent:",
-                    err,
-                );
+            } catch {
                 const ua = navigator.userAgent.toLowerCase();
-                if (ua.includes("linux")) platform.value = "linux";
-                else if (ua.includes("mac")) platform.value = "darwin";
+                if (ua.includes("mac")) platform.value = "darwin";
                 else if (ua.includes("win")) platform.value = "windows";
                 else platform.value = "unknown";
             }
 
-            const isFirstRun = localStorage.getItem("snapask_first_run");
-            if (!isFirstRun && platform.value === "linux") {
-                showFirstRunGuide.value = true;
-            }
+            // Try to keep window always on top
             try {
                 WindowSetAlwaysOnTop(true);
-            } catch (e) {
-                // ignore if not running under Wails runtime
+            } catch {
+                // ignore if not running under Wails runtime (dev mode)
             }
         });
 
@@ -179,10 +187,10 @@ export default {
         const triggerScreenshot = async () => {
             try {
                 WindowSetAlwaysOnTop(true);
-            } catch (e) {}
+            } catch {}
             try {
                 WindowFullscreen();
-            } catch (e) {}
+            } catch {}
             showScreenshotOverlay.value = true;
         };
 
@@ -194,43 +202,46 @@ export default {
             showScreenshotOverlay.value = false;
             try {
                 WindowUnfullscreen();
-            } catch (e) {}
+            } catch {}
         };
 
         const cancelScreenshot = () => {
             showScreenshotOverlay.value = false;
             try {
                 WindowUnfullscreen();
-            } catch (e) {}
+            } catch {}
         };
 
         const handleQuerySubmit = async (queryText) => {
             if (!currentQuery.value) return;
+
+            // Capture screenshot data BEFORE clearing currentQuery to avoid losing it
+            let screenshotDataUrl = currentQuery.value.screenshot || "";
+            let screenshotB64 = screenshotDataUrl;
+            if (screenshotDataUrl.startsWith("data:image")) {
+                const comma = screenshotDataUrl.indexOf(",");
+                if (comma !== -1) {
+                    screenshotB64 = screenshotDataUrl.substring(comma + 1);
+                }
+            }
+
             const query = {
                 query: queryText,
-                screenshot: currentQuery.value.screenshot,
+                screenshot: screenshotDataUrl,
                 response: "",
                 loading: true,
             };
             conversationHistory.value.push(query);
-            currentQuery.value = null;
+
+            // Prepare response window
             showResponseWindow.value = true;
             isLoadingResponse.value = true;
 
-            try {
-                // Try to call Wails backend
-                if (window.go && window.go.main && window.go.main.App) {
-                    // Extract base64 from data URL if present
-                    let screenshotB64 = currentQuery.value?.screenshot || "";
-                    if (screenshotB64.startsWith("data:image")) {
-                        const commaIndex = screenshotB64.indexOf(",");
-                        if (commaIndex !== -1) {
-                            screenshotB64 = screenshotB64.substring(
-                                commaIndex + 1,
-                            );
-                        }
-                    }
+            // Clear current query after we saved the screenshot
+            currentQuery.value = null;
 
+            try {
+                if (window.go && window.go.main && window.go.main.App) {
                     const response = await window.go.main.App.QueryLLM(
                         queryText,
                         screenshotB64,
@@ -240,47 +251,99 @@ export default {
                     latestResponse.value = response;
                     isLoadingResponse.value = false;
                 } else {
-                    // Fallback simulation for dev mode
+                    // Dev fallback
                     setTimeout(() => {
                         const response = `Response to: "${queryText}"\n\nThis connects to AMD GPT OSS 120B model.\n\n(Running in dev mode - backend not connected)`;
                         query.response = response;
                         query.loading = false;
                         latestResponse.value = response;
                         isLoadingResponse.value = false;
-                    }, 2000);
+                    }, 1200);
                 }
             } catch (error) {
-                console.error("QueryLLM failed:", error);
-                query.response = `Error: ${error.message || "Failed to query LLM"}\n\nPlease check:\n1. AMD_LLM_ENDPOINT is set\n2. AMD_API_KEY is valid\n3. Network connection`;
+                const msg = error?.message || "Failed to query LLM";
+                query.response = `Error: ${msg}\n\nPlease check:\n1. AMD_LLM_ENDPOINT is set\n2. AMD_API_KEY is valid\n3. Network connection`;
                 query.loading = false;
                 latestResponse.value = query.response;
                 isLoadingResponse.value = false;
             }
         };
 
-        const pinResponse = () => {
-            showResponseWindow.value = false;
+        // Make the app window compact and keep it floating on all windows
+        const pinResponse = async () => {
+            compactMode.value = true;
+            showResponseWindow.value = true;
+            try {
+                prevSize.value = await WindowGetSize();
+                prevPos.value = await WindowGetPosition();
+
+                const screens = await ScreenGetAll();
+                const primary = screens.find((s) => s.isPrimary) || screens[0];
+
+                const width = 420;
+                const height = 380;
+                const margin = 16;
+                const x = Math.max(
+                    0,
+                    (primary?.width || 1280) - width - margin,
+                );
+                const y = Math.max(
+                    0,
+                    (primary?.height || 800) - height - margin,
+                );
+
+                WindowSetSize(width, height);
+                WindowSetPosition(x, y);
+                WindowSetAlwaysOnTop(true);
+            } catch {
+                // ignore when runtime not available (dev)
+            }
         };
-        const closeFirstRunGuide = () => {
-            showFirstRunGuide.value = false;
-            localStorage.setItem("snapask_first_run", "true");
+
+        // Close the floating window and restore the window size/position if compact
+        const closeResponseWindow = async () => {
+            const wasCompact = compactMode.value;
+            showResponseWindow.value = false;
+            compactMode.value = false;
+
+            if (wasCompact) {
+                try {
+                    if (prevSize.value.w && prevSize.value.h) {
+                        WindowSetSize(prevSize.value.w, prevSize.value.h);
+                    }
+                    if (
+                        typeof prevPos.value.x === "number" &&
+                        typeof prevPos.value.y === "number"
+                    ) {
+                        WindowSetPosition(prevPos.value.x, prevPos.value.y);
+                    }
+                } catch {
+                    // ignore when runtime not available (dev)
+                }
+            }
         };
 
         return {
+            // state
             showScreenshotOverlay,
-            showFirstRunGuide,
             currentQuery,
             conversationHistory,
             showResponseWindow,
             latestResponse,
             isLoadingResponse,
+            platform,
+            compactMode,
+
+            // computed
             hotkey,
+
+            // actions
             triggerScreenshot,
             cancelScreenshot,
             handleScreenshotCaptured,
             handleQuerySubmit,
             pinResponse,
-            closeFirstRunGuide,
+            closeResponseWindow,
         };
     },
 };

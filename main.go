@@ -21,21 +21,22 @@ func main() {
 
 	// Create application with options
 	err := wails.Run(&options.App{
-		Title:  "Korner - AI Screenshot Assistant",
-		Width:  1024,
-		Height: 768,
+		Title:       "Korner - AI Screenshot Assistant",
+		Width:       1024,
+		Height:      768,
+		AlwaysOnTop: true,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
-		BackgroundColour: &options.RGBA{R: 248, G: 250, B: 252, A: 1},
+		BackgroundColour: &options.RGBA{R: 248, G: 250, B: 252, A: 0},
 		OnStartup:        app.startup,
 		Bind: []interface{}{
 			app,
 		},
 		Linux: &linux.Options{
-			Icon: []byte{},
-			WindowIsTranslucent: false,
-			WebviewGpuPolicy: linux.WebviewGpuPolicyAlways,
+			Icon:                []byte{},
+			WindowIsTranslucent: true,
+			WebviewGpuPolicy:    linux.WebviewGpuPolicyAlways,
 		},
 		Mac: &mac.Options{
 			TitleBar: mac.TitleBarHiddenInset(),
@@ -43,12 +44,12 @@ func main() {
 				Title:   "Korner",
 				Message: "AI Screenshot Assistant powered by AMD GPT OSS 120B\n\n© 2025 Korner Team",
 			},
-			WebviewIsTransparent: false,
-			WindowIsTranslucent:  false,
+			WebviewIsTransparent: true,
+			WindowIsTranslucent:  true,
 		},
 		Windows: &windows.Options{
-			WebviewIsTransparent: false,
-			WindowIsTranslucent:  false,
+			WebviewIsTransparent: true,
+			WindowIsTranslucent:  true,
 			DisableWindowIcon:    false,
 		},
 	})

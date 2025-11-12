@@ -1,4 +1,4 @@
-# SnapAsk Frontend - Vue 3 Application
+# Korner Frontend - Vue 3 Application
 
 This is the frontend application for SnapAsk, built with Vue 3, Vite, and Tailwind CSS.
 

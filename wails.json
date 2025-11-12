@@ -1,12 +1,12 @@
 {
-  "name": "SnapAsk",
+  "name": "Korner",
   "version": "1.0.0",
   "description": "Cross-platform Screenshot AI Assistant",
   "author": {
-    "name": "SnapAsk Team",
-    "email": "team@snapask.com"
+    "name": "Korner Team",
+    "email": "team@Korner.com"
   },
-  "outputfilename": "snapask",
+  "outputfilename": "Korner",
   "frontend:install": "npm install",
   "frontend:build": "npm run build",
   "frontend:dev": "npm run dev",
@@ -17,20 +17,11 @@
   "reloaddirs": "frontend/src",
   "build:dir": "./build",
   "info": {
-    "companyName": "SnapAsk",
-    "productName": "SnapAsk",
+    "companyName": "Korner",
+    "productName": "Korner",
     "productVersion": "1.0.0",
-    "copyright": "Copyright © 2024 SnapAsk Team",
+    "copyright": "Copyright © 2025 Korner Team",
     "comments": "AI-powered screenshot assistant using AMD GPT OSS 120B"
-  },
-  "linux": {
-    "icon": "build/appicon.png",
-    "deb": {
-      "package": {
-        "name": "snapask",
-        "description": "Cross-platform Screenshot AI Assistant powered by AMD GPT OSS 120B"
-      }
-    }
   },
   "windows": {
     "icon": "build/appicon.ico",
@@ -42,7 +33,7 @@
     "icon": "build/appicon.icns",
     "info": {
       "LSMinimumSystemVersion": "10.13.0",
-      "NSHumanReadableCopyright": "Copyright © 2024 SnapAsk Team"
+      "NSHumanReadableCopyright": "Copyright © 2025 Korner Team"
     }
   }
 }
