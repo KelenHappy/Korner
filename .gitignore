@@ -43,6 +43,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Wails
+build/nul
 build/bin/
 build/windows/
 build/darwin/
