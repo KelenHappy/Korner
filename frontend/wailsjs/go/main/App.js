@@ -6,8 +6,20 @@ export function CaptureScreenshot(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['CaptureScreenshot'](arg1, arg2, arg3, arg4);
 }
 
+export function GetDPIScale() {
+  return window['go']['main']['App']['GetDPIScale']();
+}
+
 export function GetPlatform() {
   return window['go']['main']['App']['GetPlatform']();
+}
+
+export function GetScreenSize() {
+  return window['go']['main']['App']['GetScreenSize']();
+}
+
+export function GetWindowPosition() {
+  return window['go']['main']['App']['GetWindowPosition']();
 }
 
 export function HideWindow() {
@@ -16,6 +28,10 @@ export function HideWindow() {
 
 export function InitSystemTray() {
   return window['go']['main']['App']['InitSystemTray']();
+}
+
+export function OpenDevTools() {
+  return window['go']['main']['App']['OpenDevTools']();
 }
 
 export function QueryLLM(arg1, arg2) {

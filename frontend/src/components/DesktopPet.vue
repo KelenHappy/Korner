@@ -59,9 +59,9 @@
                 </div>
                 <div class="bubble-content">
                     <!-- Screenshot Preview -->
-                    <div v-if="lastScreenshot" class="screenshot-display">
+                    <div v-if="currentScreenshot" class="screenshot-display">
                         <img
-                            :src="lastScreenshot"
+                            :src="currentScreenshot"
                             alt="Last screenshot"
                             class="response-screenshot"
                         />
@@ -176,6 +176,7 @@ export default {
     setup(props, { emit }) {
         const showMenu = ref(false);
         const showChatBubble = ref(false);
+        const currentScreenshot = ref(null);
 
         // Position tracking
         const petPosition = ref({ x: 20, y: 20 });
@@ -231,6 +232,16 @@ export default {
                 }
             },
             { immediate: true },
+        );
+
+        // Watch for lastScreenshot prop changes
+        watch(
+            () => props.lastScreenshot,
+            (newScreenshot) => {
+                if (newScreenshot) {
+                    currentScreenshot.value = newScreenshot;
+                }
+            },
         );
 
         // Dragging functions for pet
@@ -314,6 +325,7 @@ export default {
         return {
             showMenu,
             showChatBubble,
+            currentScreenshot,
             petPosition,
             chatPosition,
             toggleMenu,

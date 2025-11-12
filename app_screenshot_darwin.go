@@ -12,6 +12,20 @@ import (
 	"time"
 )
 
+// getDPIScale returns the DPI scale for macOS
+// macOS handles DPI scaling automatically, so we return 1.0
+func getDPIScale() float64 {
+	return 1.0
+}
+
+// getScreenSize returns the actual physical screen dimensions for macOS
+// For now, returns a default value - should be implemented using Cocoa APIs
+func getScreenSize() (int, int) {
+	// TODO: Implement using Cocoa APIs to get actual screen dimensions
+	return 1920, 1080
+}
+
+func captureScreenshot(ctx context.Context, x, y, width, height int) (string, error) {
 // captureScreenshot is the macOS (darwin) implementation that captures either a specified rectangle
 // or, if width/height are not positive, opens the interactive system UI for selection.
 //

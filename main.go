@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"log"
+	"os"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -16,11 +17,20 @@ import (
 var assets embed.FS
 
 func main() {
+	// Set up logging to file
+	logFile, err := os.OpenFile("korner.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatal("Failed to open log file:", err)
+	}
+	defer logFile.Close()
+	log.SetOutput(logFile)
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
 	// Create an instance of the app structure
 	app := NewApp()
 
 	// Create application with options
-	err := wails.Run(&options.App{
+	err = wails.Run(&options.App{
 		Title:             "Korner - AI Screenshot Assistant",
 		Width:             800,
 		Height:            600,
@@ -36,6 +46,9 @@ func main() {
 		OnDomReady:       app.domReady,
 		Bind: []interface{}{
 			app,
+		},
+		Debug: options.Debug{
+			OpenInspectorOnStartup: true,
 		},
 		Linux: &linux.Options{
 			Icon:                []byte{},

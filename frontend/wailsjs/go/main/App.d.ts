@@ -3,11 +3,19 @@
 
 export function CaptureScreenshot(arg1:number,arg2:number,arg3:number,arg4:number):Promise<string>;
 
+export function GetDPIScale():Promise<number>;
+
 export function GetPlatform():Promise<string>;
+
+export function GetScreenSize():Promise<number|number>;
+
+export function GetWindowPosition():Promise<number|number>;
 
 export function HideWindow():Promise<void>;
 
 export function InitSystemTray():Promise<void>;
+
+export function OpenDevTools():Promise<void>;
 
 export function QueryLLM(arg1:string,arg2:string):Promise<string>;
 

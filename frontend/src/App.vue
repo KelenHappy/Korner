@@ -29,6 +29,16 @@
             @submit="handleQuerySubmit"
             @cancel="cancelQueryWindow"
         />
+
+        <!-- Response Window - shown after query submitted -->
+        <ResponseWindow
+            v-if="showResponseWindow"
+            :response="latestResponse"
+            :loading="isLoadingResponse"
+            :screenshot="lastScreenshot"
+            @close="closeResponseWindow"
+            @pin="pinResponseWindow"
+        />
     </div>
 </template>
 
@@ -37,6 +47,7 @@ import { ref, computed, onMounted, onUnmounted } from "vue";
 import ScreenshotOverlay from "./components/ScreenshotOverlay.vue";
 import QueryWindow from "./components/QueryWindow.vue";
 import DesktopPet from "./components/DesktopPet.vue";
+import ResponseWindow from "./components/ResponseWindow.vue";
 
 import {
     WindowSetAlwaysOnTop,
@@ -53,10 +64,12 @@ export default {
         ScreenshotOverlay,
         QueryWindow,
         DesktopPet,
+        ResponseWindow,
     },
     setup() {
         const showScreenshotOverlay = ref(false);
         const showQueryWindow = ref(false);
+        const showResponseWindow = ref(false);
         const currentQuery = ref(null);
         const latestResponse = ref("");
         const isLoadingResponse = ref(false);
@@ -112,23 +125,50 @@ export default {
         );
 
         const triggerScreenshot = async () => {
+            console.log("[Korner] Triggering screenshot flow");
+            showResponseWindow.value = false;
+            latestResponse.value = "";
+            isLoadingResponse.value = false;
             try {
                 WindowShow();
                 WindowSetAlwaysOnTop(true);
             } catch {}
+
+            // Try to maximize window first, then fullscreen
+            try {
+                if (window.wails && window.wails.Window) {
+                    await window.wails.Window.Maximise();
+                }
+            } catch (e) {
+                console.log("[Korner] Maximise not available:", e);
+            }
+
             try {
                 WindowFullscreen();
             } catch {}
+
             showScreenshotOverlay.value = true;
         };
 
         const handleScreenshotCaptured = (screenshotData) => {
+            console.log("[Korner] Screenshot captured", {
+                hasData: !!screenshotData,
+                length: screenshotData ? screenshotData.length : 0,
+            });
             // Screenshot captured - store it and prepare for query window
+
             currentQuery.value = {
                 screenshot: screenshotData,
+
                 timestamp: new Date(),
             };
+
             lastScreenshot.value = screenshotData;
+
+            console.log("[Korner] Stored screenshot for query window", {
+                length: screenshotData ? screenshotData.length : 0,
+            });
+
             showScreenshotOverlay.value = false;
 
             try {
@@ -136,7 +176,9 @@ export default {
             } catch {}
 
             // Show query window with a small delay for smooth transition
+
             setTimeout(() => {
+                console.log("[Korner] Opening QueryWindow modal");
                 showQueryWindow.value = true;
             }, 200);
         };
@@ -156,6 +198,10 @@ export default {
 
         const handleQuerySubmit = async (queryText) => {
             if (!currentQuery.value) return;
+            console.log("[Korner] Submitting query", {
+                textLength: queryText.length,
+                hasScreenshot: !!currentQuery.value?.screenshot,
+            });
 
             // Prepare screenshot data
             let screenshotB64 = currentQuery.value.screenshot || "";
@@ -192,7 +238,17 @@ export default {
                 isLoadingResponse.value = false;
             }
 
+            // Show response window
+
+            showResponseWindow.value = true;
+
+            console.log("[Korner] Response received", {
+                hasResponse: !!latestResponse.value,
+                loading: isLoadingResponse.value,
+            });
+
             // Clear current query
+
             currentQuery.value = null;
         };
 
@@ -224,9 +280,18 @@ export default {
             }
         };
 
+        const closeResponseWindow = () => {
+            showResponseWindow.value = false;
+        };
+
+        const pinResponseWindow = () => {
+            // For now, just keep it open; could add pinning logic later
+        };
+
         return {
             showScreenshotOverlay,
             showQueryWindow,
+            showResponseWindow,
             currentQuery,
             latestResponse,
             isLoadingResponse,
@@ -242,6 +307,8 @@ export default {
             showSettings,
             minimizeToTray,
             startWindowDrag,
+            closeResponseWindow,
+            pinResponseWindow,
         };
     },
 };
