@@ -1,92 +1,74 @@
 <template>
-    <div class="query-window-container">
-        <div
-            ref="queryDialog"
-            class="query-dialog"
-            :style="{ top: position.y + 'px', left: position.x + 'px' }"
-        >
-            <!-- Draggable header -->
-            <div
-                class="query-header"
-                @mousedown="startDrag"
-                :style="{ cursor: isDragging ? 'grabbing' : 'grab' }"
-            >
-                <h3 class="query-title">💭 Ask about this screenshot</h3>
+    <div class="query-overlay">
+        <div class="query-modal">
+            <!-- Header -->
+            <div class="modal-header">
+                <h2 class="modal-title">💭 Ask about this screenshot</h2>
                 <button @click="cancel" class="close-btn" title="Close">
                     ✕
                 </button>
             </div>
 
             <!-- Screenshot Preview -->
-            <div class="screenshot-preview">
-                <img
-                    :src="screenshot"
-                    alt="Screenshot"
-                    class="screenshot-img"
-                />
-            </div>
+            <div class="modal-body">
+                <div class="screenshot-section">
+                    <img
+                        :src="screenshot"
+                        alt="Screenshot"
+                        class="screenshot-img"
+                    />
+                </div>
 
-            <!-- Query Input -->
-            <div class="query-input-section">
-                <label class="input-label">Your Question</label>
-                <textarea
-                    v-model="queryText"
-                    @keydown.ctrl.enter="submit"
-                    @keydown.meta.enter="submit"
-                    class="query-textarea"
-                    rows="3"
-                    placeholder="e.g., 'Explain this code', 'What's wrong with this error?', 'Summarize this chart'..."
-                    autofocus
-                ></textarea>
-                <div class="input-footer">
-                    <span class="shortcut-hint">
-                        Press
-                        <kbd class="kbd">{{ submitKey }}</kbd>
-                        to submit
-                    </span>
-                    <span class="char-count"
-                        >{{ queryText.length }} / 1000</span
-                    >
+                <!-- Query Input -->
+                <div class="input-section">
+                    <label class="input-label">Your Question</label>
+                    <textarea
+                        v-model="queryText"
+                        @keydown.ctrl.enter="submit"
+                        @keydown.meta.enter="submit"
+                        class="query-textarea"
+                        rows="4"
+                        placeholder="Ask anything about this screenshot..."
+                        autofocus
+                    ></textarea>
+                    <div class="input-info">
+                        <span class="char-count"
+                            >{{ queryText.length }} / 1000</span
+                        >
+                        <span class="shortcut-hint">
+                            Press
+                            <kbd class="kbd">{{ submitKey }}</kbd>
+                            to submit
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Quick Prompts -->
+                <div class="prompts-section">
+                    <p class="prompts-label">Quick suggestions:</p>
+                    <div class="prompts-grid">
+                        <button
+                            v-for="prompt in quickPrompts"
+                            :key="prompt"
+                            @click="queryText = prompt"
+                            class="prompt-btn"
+                        >
+                            {{ prompt }}
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <!-- Quick Prompts -->
-            <div class="quick-prompts">
-                <p class="prompts-label">Quick prompts:</p>
-                <div class="prompts-grid">
-                    <button
-                        v-for="prompt in quickPrompts"
-                        :key="prompt"
-                        @click="queryText = prompt"
-                        class="prompt-btn"
-                    >
-                        {{ prompt }}
-                    </button>
-                </div>
-            </div>
-
-            <!-- Actions -->
-            <div class="actions">
+            <!-- Footer Actions -->
+            <div class="modal-footer">
                 <button @click="cancel" class="btn-cancel">Cancel</button>
                 <button
                     @click="submit"
                     :disabled="!queryText.trim()"
                     class="btn-submit"
                 >
-                    <svg
-                        class="icon"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M13 10V3L4 14h7v7l9-11h-7z"
-                        />
-                    </svg>
-                    <span>Ask AI</span>
+                    <span class="btn-icon">✨</span>
+                    <span class="btn-text">Ask AI</span>
                 </button>
             </div>
         </div>
@@ -94,7 +76,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed } from "vue";
 
 export default {
     name: "QueryWindow",
@@ -107,18 +89,14 @@ export default {
     emits: ["submit", "cancel"],
     setup(props, { emit }) {
         const queryText = ref("");
-        const queryDialog = ref(null);
-        const position = ref({ x: 0, y: 0 });
-        const isDragging = ref(false);
-        const dragOffset = ref({ x: 0, y: 0 });
 
         const quickPrompts = [
-            "Explain this code",
-            "What does this mean?",
-            "Find the error",
-            "Summarize this",
-            "Translate this",
-            "Improve this code",
+            "Explain this",
+            "What's wrong?",
+            "Summarize",
+            "Translate",
+            "Improve this",
+            "Find bugs",
         ];
 
         const isMac = computed(() => {
@@ -129,63 +107,10 @@ export default {
             return isMac.value ? "Cmd+Enter" : "Ctrl+Enter";
         });
 
-        // Position dialog in top-right corner on mount
-        onMounted(() => {
-            const margin = 20;
-            const dialogWidth = 420;
-            position.value = {
-                x: window.innerWidth - dialogWidth - margin,
-                y: margin,
-            };
-        });
-
-        // Dragging functionality
-        const startDrag = (e) => {
-            isDragging.value = true;
-            dragOffset.value = {
-                x: e.clientX - position.value.x,
-                y: e.clientY - position.value.y,
-            };
-
-            document.addEventListener("mousemove", onDrag);
-            document.addEventListener("mouseup", stopDrag);
-        };
-
-        const onDrag = (e) => {
-            if (!isDragging.value) return;
-
-            const newX = e.clientX - dragOffset.value.x;
-            const newY = e.clientY - dragOffset.value.y;
-
-            // Constrain to window bounds
-            const dialogWidth = queryDialog.value?.offsetWidth || 420;
-            const dialogHeight = queryDialog.value?.offsetHeight || 600;
-
-            position.value = {
-                x: Math.max(0, Math.min(newX, window.innerWidth - dialogWidth)),
-                y: Math.max(
-                    0,
-                    Math.min(newY, window.innerHeight - dialogHeight),
-                ),
-            };
-        };
-
-        const stopDrag = () => {
-            isDragging.value = false;
-            document.removeEventListener("mousemove", onDrag);
-            document.removeEventListener("mouseup", stopDrag);
-        };
-
-        onUnmounted(() => {
-            document.removeEventListener("mousemove", onDrag);
-            document.removeEventListener("mouseup", stopDrag);
-        });
-
         const submit = () => {
             const trimmed = queryText.value.trim();
             if (trimmed) {
-                const clamped = trimmed.slice(0, 1000);
-                emit("submit", clamped);
+                emit("submit", trimmed.slice(0, 1000));
                 queryText.value = "";
             }
         };
@@ -200,115 +125,139 @@ export default {
             submitKey,
             submit,
             cancel,
-            queryDialog,
-            position,
-            isDragging,
-            startDrag,
         };
     },
 };
 </script>
 
 <style scoped>
-.query-window-container {
+.query-overlay {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    pointer-events: none;
-    z-index: 9998;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 20px;
+    animation: fadeIn 0.2s ease-out;
 }
 
-.query-dialog {
-    position: fixed;
-    width: 420px;
-    background: rgba(255, 255, 255, 0.98);
-    backdrop-filter: blur(20px);
-    border-radius: 20px;
-    box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3);
-    border: 2px solid rgba(102, 126, 234, 0.2);
-    overflow: hidden;
-    pointer-events: auto;
-    animation: slideIn 0.3s ease-out;
-}
-
-@keyframes slideIn {
+@keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translateY(-20px) scale(0.95);
     }
     to {
         opacity: 1;
-        transform: translateY(0) scale(1);
+    }
+}
+
+.query-modal {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.3s ease-out;
+    overflow: hidden;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 
 /* Header */
-.query-header {
+.modal-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 20px;
+    padding: 20px 24px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    user-select: none;
-    -webkit-app-region: no-drag;
+    border-bottom: none;
 }
 
-.query-title {
-    font-size: 16px;
+.modal-title {
+    font-size: 18px;
     font-weight: 700;
     color: white;
     margin: 0;
 }
 
 .close-btn {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     border: none;
     background: rgba(255, 255, 255, 0.2);
     color: white;
-    border-radius: 50%;
+    border-radius: 8px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
+    font-size: 20px;
     transition: all 0.2s ease;
+    padding: 0;
 }
 
 .close-btn:hover {
     background: rgba(255, 255, 255, 0.3);
-    transform: scale(1.1);
+    transform: scale(1.05);
 }
 
-/* Screenshot Preview */
-.screenshot-preview {
-    padding: 16px 20px 12px;
-    background: rgba(102, 126, 234, 0.03);
+/* Body */
+.modal-body {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Screenshot */
+.screenshot-section {
+    width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid rgba(102, 126, 234, 0.15);
+    background: rgba(102, 126, 234, 0.05);
 }
 
 .screenshot-img {
     width: 100%;
-    max-height: 180px;
+    max-height: 200px;
     object-fit: contain;
-    border-radius: 12px;
-    border: 2px solid rgba(102, 126, 234, 0.15);
+    display: block;
     background: white;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-/* Query Input */
-.query-input-section {
-    padding: 12px 20px;
+/* Input Section */
+.input-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .input-label {
-    display: block;
     font-size: 13px;
     font-weight: 600;
     color: #4b5563;
-    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .query-textarea {
@@ -317,12 +266,12 @@ export default {
     border: 2px solid rgba(102, 126, 234, 0.2);
     border-radius: 10px;
     font-size: 14px;
-    line-height: 1.5;
+    line-height: 1.6;
     color: #1f2937;
-    resize: none;
-    transition: all 0.2s ease;
+    resize: vertical;
     font-family:
         -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    transition: all 0.2s ease;
     box-sizing: border-box;
 }
 
@@ -336,15 +285,18 @@ export default {
     color: #9ca3af;
 }
 
-.input-footer {
+.input-info {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-top: 8px;
+    font-size: 12px;
+}
+
+.char-count {
+    color: #9ca3af;
 }
 
 .shortcut-hint {
-    font-size: 11px;
     color: #6b7280;
 }
 
@@ -359,21 +311,18 @@ export default {
     color: #667eea;
 }
 
-.char-count {
-    font-size: 11px;
-    color: #9ca3af;
-}
-
-/* Quick Prompts */
-.quick-prompts {
-    padding: 0 20px 12px;
+/* Prompts */
+.prompts-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .prompts-label {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     color: #6b7280;
-    margin: 0 0 8px 0;
+    margin: 0;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -381,12 +330,12 @@ export default {
 .prompts-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 6px;
+    gap: 8px;
 }
 
 .prompt-btn {
-    padding: 8px 12px;
-    font-size: 12px;
+    padding: 9px 12px;
+    font-size: 13px;
     background: linear-gradient(
         135deg,
         rgba(102, 126, 234, 0.08) 0%,
@@ -414,13 +363,13 @@ export default {
     box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
 }
 
-/* Actions */
-.actions {
+/* Footer */
+.modal-footer {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 10px;
-    padding: 16px 20px;
+    gap: 12px;
+    padding: 16px 24px;
     background: rgba(102, 126, 234, 0.03);
     border-top: 1px solid rgba(102, 126, 234, 0.1);
 }
@@ -432,7 +381,7 @@ export default {
     color: #6b7280;
     background: transparent;
     border: none;
-    border-radius: 10px;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s ease;
 }
@@ -452,7 +401,7 @@ export default {
     color: white;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border: none;
-    border-radius: 10px;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s ease;
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
@@ -473,8 +422,61 @@ export default {
     box-shadow: none;
 }
 
-.btn-submit .icon {
-    width: 18px;
-    height: 18px;
+.btn-icon {
+    font-size: 16px;
+}
+
+.btn-text {
+    font-weight: 600;
+}
+
+/* Scrollbar styling */
+.modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: rgba(102, 126, 234, 0.05);
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.2);
+    border-radius: 3px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 126, 234, 0.3);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 600px) {
+    .query-overlay {
+        padding: 10px;
+    }
+
+    .query-modal {
+        max-height: 95vh;
+    }
+
+    .modal-header {
+        padding: 16px 20px;
+    }
+
+    .modal-title {
+        font-size: 16px;
+    }
+
+    .modal-body {
+        padding: 16px;
+        gap: 16px;
+    }
+
+    .prompts-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .modal-footer {
+        padding: 12px 16px;
+    }
 }
 </style>

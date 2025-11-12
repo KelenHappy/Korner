@@ -1,10 +1,12 @@
 <template>
-    <div class="desktop-pet-container" :class="{ 'with-chat': showChatBubble }">
+    <div class="desktop-pet-wrapper">
         <!-- Draggable pet avatar -->
         <div
-            class="pet-avatar"
-            @mousedown="startDrag"
-            :style="{ cursor: isDragging ? 'grabbing' : 'grab' }"
+            class="pet-container"
+            :style="{
+                transform: `translate(${petPosition.x}px, ${petPosition.y}px)`,
+            }"
+            @mousedown="startDragPet"
         >
             <!-- Pet character -->
             <div class="pet-character">
@@ -40,72 +42,33 @@
             </button>
         </div>
 
-        <!-- Chat bubble (appears next to pet) -->
+        <!-- Chat bubble (appears next to pet, independently draggable) -->
         <transition name="bubble">
-            <div class="chat-bubble" v-if="showChatBubble">
-                <div class="bubble-header" @mousedown="startDragChatbox">
-                    <span class="bubble-title">💬 Chat</span>
+            <div
+                class="chat-bubble"
+                v-if="showChatBubble"
+                :style="{
+                    transform: `translate(${chatPosition.x}px, ${chatPosition.y}px)`,
+                }"
+            >
+                <div class="bubble-header" @mousedown="startDragChat">
+                    <span class="bubble-title">💬 Response</span>
                     <button @click="closeChatBubble" class="close-bubble">
                         ✕
                     </button>
                 </div>
                 <div class="bubble-content">
-                    <!-- Query Input Mode - when currentQuery exists -->
-                    <div
-                        v-if="currentQuery && !chatLoading && !chatMessage"
-                        class="query-mode"
-                    >
-                        <!-- Screenshot Preview -->
-                        <div class="screenshot-preview">
-                            <img
-                                :src="currentQuery.screenshot"
-                                alt="Screenshot"
-                                class="preview-img"
-                            />
-                        </div>
-
-                        <!-- Query Input -->
-                        <div class="query-input">
-                            <textarea
-                                v-model="queryText"
-                                @keydown.ctrl.enter="submitQuery"
-                                @keydown.meta.enter="submitQuery"
-                                placeholder="Ask me anything about this screenshot..."
-                                rows="3"
-                                class="query-textarea"
-                                autofocus
-                            ></textarea>
-                        </div>
-
-                        <!-- Quick Prompts -->
-                        <div class="quick-prompts">
-                            <button
-                                v-for="prompt in quickPrompts"
-                                :key="prompt"
-                                @click="queryText = prompt"
-                                class="prompt-btn"
-                            >
-                                {{ prompt }}
-                            </button>
-                        </div>
-
-                        <!-- Submit Button -->
-                        <div class="query-actions">
-                            <button @click="cancelQuery" class="btn-cancel">
-                                Cancel
-                            </button>
-                            <button
-                                @click="submitQuery"
-                                :disabled="!queryText.trim()"
-                                class="btn-submit"
-                            >
-                                <span>Ask AI</span> 💭
-                            </button>
-                        </div>
+                    <!-- Screenshot Preview -->
+                    <div v-if="lastScreenshot" class="screenshot-display">
+                        <img
+                            :src="lastScreenshot"
+                            alt="Last screenshot"
+                            class="response-screenshot"
+                        />
                     </div>
 
                     <!-- Loading State -->
-                    <div v-else-if="chatLoading" class="loading">
+                    <div v-if="chatLoading" class="loading">
                         <div class="loading-dots">
                             <span></span>
                             <span></span>
@@ -121,15 +84,35 @@
 
                     <!-- Empty State -->
                     <div v-else class="chat-text empty">
-                        Hi! Click 📸 to take a screenshot!
+                        Response will appear here
+                    </div>
+
+                    <!-- Screenshot Action Button -->
+                    <div
+                        v-if="!chatLoading && !chatMessage"
+                        class="action-area"
+                    >
+                        <button
+                            @click="handleScreenshot"
+                            class="screenshot-action-btn"
+                        >
+                            <span class="btn-icon">📸</span>
+                            <span class="btn-label">Take Screenshot</span>
+                        </button>
                     </div>
                 </div>
             </div>
         </transition>
 
-        <!-- Compact menu (appears when menu button clicked) -->
+        <!-- Hover Menu -->
         <transition name="menu">
-            <div class="hover-menu" v-if="showMenu">
+            <div
+                class="hover-menu"
+                v-if="showMenu"
+                :style="{
+                    transform: `translate(${petPosition.x}px, ${petPosition.y}px)`,
+                }"
+            >
                 <button @click="handleScreenshot" class="menu-item">
                     <span class="icon">📸</span>
                     <span class="text">Screenshot</span>
@@ -144,20 +127,22 @@
                     <span class="icon">⚙️</span>
                     <span class="text">Settings</span>
                 </button>
-                <button @click="handleMinimize" class="menu-item">
-                    <span class="icon">➖</span>
-                    <span class="text">Minimize</span>
-                </button>
-                <button @click="handleClose" class="menu-item close">
+                <button @click="handleMinimize" class="menu-item close">
                     <span class="icon">✕</span>
-                    <span class="text">Close</span>
+                    <span class="text">Minimize</span>
                 </button>
             </div>
         </transition>
 
         <!-- Status indicator -->
         <transition name="fade">
-            <div class="status-indicator" v-if="status">
+            <div
+                class="status-indicator"
+                v-if="status"
+                :style="{
+                    transform: `translate(${petPosition.x}px, ${petPosition.y - 50}px)`,
+                }"
+            >
                 {{ status }}
             </div>
         </transition>
@@ -165,19 +150,11 @@
 </template>
 
 <script>
-import { ref, watch, onMounted } from "vue";
-import { WindowSetSize } from "../../wailsjs/runtime/runtime";
+import { ref, watch, onUnmounted } from "vue";
 
 export default {
     name: "DesktopPet",
-    emits: [
-        "screenshot",
-        "submit-query",
-        "cancel-query",
-        "settings",
-        "minimize",
-        "close",
-    ],
+    emits: ["screenshot", "settings", "minimize"],
     props: {
         status: {
             type: String,
@@ -191,23 +168,28 @@ export default {
             type: Boolean,
             default: false,
         },
-        currentQuery: {
-            type: Object,
+        lastScreenshot: {
+            type: String,
             default: null,
         },
     },
     setup(props, { emit }) {
         const showMenu = ref(false);
         const showChatBubble = ref(false);
-        const isDragging = ref(false);
-        const queryText = ref("");
 
-        const quickPrompts = [
-            "Explain this",
-            "What's this?",
-            "Summarize",
-            "Translate",
-        ];
+        // Position tracking
+        const petPosition = ref({ x: 20, y: 20 });
+        const chatPosition = ref({ x: 180, y: 20 });
+
+        // Drag state
+        let isDraggingPet = false;
+        let isDraggingChat = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let dragStartPetX = 0;
+        let dragStartPetY = 0;
+        let dragStartChatX = 0;
+        let dragStartChatY = 0;
 
         const toggleMenu = () => {
             showMenu.value = !showMenu.value;
@@ -216,33 +198,10 @@ export default {
         const toggleChatBubble = () => {
             showChatBubble.value = !showChatBubble.value;
             showMenu.value = false;
-            updateWindowSize();
         };
 
         const closeChatBubble = () => {
             showChatBubble.value = false;
-            updateWindowSize();
-        };
-
-        const updateWindowSize = () => {
-            try {
-                if (showChatBubble.value) {
-                    // Pet (150px) + Chat bubble (320px) + spacing (30px)
-                    WindowSetSize(500, 240);
-                } else {
-                    // Just pet
-                    WindowSetSize(220, 220);
-                }
-            } catch (e) {
-                // Ignore if runtime not available
-            }
-        };
-
-        const startDrag = (e) => {
-            isDragging.value = true;
-            if (window.wails && window.wails.Window) {
-                window.wails.Window.StartDrag();
-            }
         };
 
         const handleScreenshot = () => {
@@ -260,99 +219,142 @@ export default {
             emit("minimize");
         };
 
-        const handleClose = () => {
-            showMenu.value = false;
-            emit("close");
-        };
-
-        // Watch for currentQuery, chat message or loading changes to auto-show bubble
+        // Watch for chat message or loading changes to auto-show bubble
         watch(
-            () => [props.currentQuery, props.chatMessage, props.chatLoading],
-            ([newQuery, newMessage, newLoading]) => {
-                // Auto-show when query, loading starts or message arrives
-                if (newQuery || newLoading || newMessage) {
+            () => [props.chatMessage, props.chatLoading],
+            ([newMessage, newLoading]) => {
+                // Auto-show when loading starts or message arrives
+                if (newLoading || newMessage) {
                     if (!showChatBubble.value) {
                         showChatBubble.value = true;
-                        updateWindowSize();
                     }
                 }
             },
             { immediate: true },
         );
 
-        const submitQuery = () => {
-            const trimmed = queryText.value.trim();
-            if (trimmed) {
-                emit("submit-query", trimmed);
-                queryText.value = "";
-            }
+        // Dragging functions for pet
+        const startDragPet = (e) => {
+            // Don't drag if clicking on buttons
+            if (e.target.closest("button")) return;
+
+            isDraggingPet = true;
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+            dragStartPetX = petPosition.value.x;
+            dragStartPetY = petPosition.value.y;
+
+            document.addEventListener("mousemove", onDragPet);
+            document.addEventListener("mouseup", stopDragPet);
         };
 
-        const cancelQuery = () => {
-            queryText.value = "";
-            emit("cancel-query");
-            showChatBubble.value = false;
-            updateWindowSize();
+        const onDragPet = (e) => {
+            if (!isDraggingPet) return;
+
+            const deltaX = e.clientX - dragStartX;
+            const deltaY = e.clientY - dragStartY;
+
+            petPosition.value.x = Math.max(
+                0,
+                Math.min(dragStartPetX + deltaX, window.innerWidth - 150),
+            );
+            petPosition.value.y = Math.max(
+                0,
+                Math.min(dragStartPetY + deltaY, window.innerHeight - 150),
+            );
         };
 
-        const startDragChatbox = (e) => {
-            // Prevent dragging when clicking in chatbox
-            e.stopPropagation();
+        const stopDragPet = () => {
+            isDraggingPet = false;
+            document.removeEventListener("mousemove", onDragPet);
+            document.removeEventListener("mouseup", stopDragPet);
         };
 
-        onMounted(() => {
-            updateWindowSize();
+        // Dragging functions for chat
+        const startDragChat = (e) => {
+            isDraggingChat = true;
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+            dragStartChatX = chatPosition.value.x;
+            dragStartChatY = chatPosition.value.y;
+
+            document.addEventListener("mousemove", onDragChat);
+            document.addEventListener("mouseup", stopDragChat);
+        };
+
+        const onDragChat = (e) => {
+            if (!isDraggingChat) return;
+
+            const deltaX = e.clientX - dragStartX;
+            const deltaY = e.clientY - dragStartY;
+
+            chatPosition.value.x = Math.max(
+                0,
+                Math.min(dragStartChatX + deltaX, window.innerWidth - 400),
+            );
+            chatPosition.value.y = Math.max(
+                0,
+                Math.min(dragStartChatY + deltaY, window.innerHeight - 400),
+            );
+        };
+
+        const stopDragChat = () => {
+            isDraggingChat = false;
+            document.removeEventListener("mousemove", onDragChat);
+            document.removeEventListener("mouseup", stopDragChat);
+        };
+
+        onUnmounted(() => {
+            document.removeEventListener("mousemove", onDragPet);
+            document.removeEventListener("mouseup", stopDragPet);
+            document.removeEventListener("mousemove", onDragChat);
+            document.removeEventListener("mouseup", stopDragChat);
         });
 
         return {
             showMenu,
             showChatBubble,
-            isDragging,
+            petPosition,
+            chatPosition,
             toggleMenu,
             toggleChatBubble,
             closeChatBubble,
-            startDrag,
             handleScreenshot,
             handleSettings,
             handleMinimize,
-            handleClose,
-            queryText,
-            quickPrompts,
-            submitQuery,
-            cancelQuery,
-            startDragChatbox,
+            startDragPet,
+            startDragChat,
         };
     },
 };
 </script>
 
 <style scoped>
-.desktop-pet-container {
-    position: relative;
+.desktop-pet-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 30px;
-    padding: 20px;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 1000;
 }
 
-/* Pet Avatar */
-.pet-avatar {
-    position: relative;
+.pet-container {
+    position: fixed;
     width: 150px;
     height: 150px;
-    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: grab;
     user-select: none;
-    -webkit-app-region: drag;
+    pointer-events: auto;
+    transition: transform 0.1s ease-out;
 }
 
-.pet-avatar:active {
+.pet-container:active {
     cursor: grabbing;
 }
 
@@ -467,7 +469,7 @@ export default {
     display: flex;
     align-items: center;
     justify-content: center;
-    -webkit-app-region: no-drag;
+    pointer-events: auto;
     z-index: 10;
 }
 
@@ -498,7 +500,7 @@ export default {
     align-items: center;
     justify-content: center;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    -webkit-app-region: no-drag;
+    pointer-events: auto;
     z-index: 10;
 }
 
@@ -517,31 +519,29 @@ export default {
 
 /* Chat Bubble */
 .chat-bubble {
-    position: relative;
-    flex: 1;
-    min-width: 320px;
-    max-width: 400px;
+    position: fixed;
+    width: 380px;
     background: rgba(255, 255, 255, 0.98);
     backdrop-filter: blur(20px);
     border-radius: 20px;
     box-shadow: 0 12px 40px rgba(102, 126, 234, 0.4);
-    padding: 0;
-    -webkit-app-region: no-drag;
+    pointer-events: auto;
     overflow: hidden;
     border: 2px solid rgba(102, 126, 234, 0.2);
+    z-index: 999;
 }
 
 .chat-bubble::before {
     content: "";
     position: absolute;
     left: -10px;
-    top: 50%;
-    transform: translateY(-50%);
+    top: 50px;
     width: 0;
     height: 0;
     border-style: solid;
     border-width: 10px 10px 10px 0;
     border-color: transparent rgba(255, 255, 255, 0.98) transparent transparent;
+    z-index: -1;
 }
 
 .bubble-header {
@@ -573,6 +573,7 @@ export default {
     justify-content: center;
     font-size: 16px;
     transition: all 0.2s ease;
+    pointer-events: auto;
 }
 
 .close-bubble:hover {
@@ -583,143 +584,29 @@ export default {
 .bubble-content {
     padding: 16px;
     min-height: 120px;
-    max-height: 500px;
+    max-height: 400px;
     overflow-y: auto;
 }
 
-/* Query Mode */
-.query-mode {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.screenshot-preview {
+/* Screenshot Display */
+.screenshot-display {
     width: 100%;
-    border-radius: 10px;
+    border-radius: 8px;
     overflow: hidden;
-    border: 2px solid rgba(102, 126, 234, 0.15);
+    border: 1px solid rgba(102, 126, 234, 0.1);
     background: rgba(102, 126, 234, 0.05);
+    margin-bottom: 12px;
 }
 
-.preview-img {
+.response-screenshot {
     width: 100%;
     max-height: 150px;
     object-fit: contain;
     display: block;
+    background: white;
 }
 
-.query-input {
-    width: 100%;
-}
-
-.query-textarea {
-    width: 100%;
-    padding: 10px;
-    border: 2px solid rgba(102, 126, 234, 0.2);
-    border-radius: 10px;
-    font-size: 13px;
-    line-height: 1.5;
-    color: #333;
-    resize: none;
-    font-family:
-        -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    transition: all 0.2s ease;
-    box-sizing: border-box;
-}
-
-.query-textarea:focus {
-    outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.query-textarea::placeholder {
-    color: #999;
-}
-
-.quick-prompts {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 6px;
-}
-
-.prompt-btn {
-    padding: 6px 10px;
-    font-size: 11px;
-    background: linear-gradient(
-        135deg,
-        rgba(102, 126, 234, 0.1) 0%,
-        rgba(118, 75, 162, 0.1) 100%
-    );
-    border: 1px solid rgba(102, 126, 234, 0.2);
-    color: #555;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-weight: 500;
-}
-
-.prompt-btn:hover {
-    background: linear-gradient(
-        135deg,
-        rgba(102, 126, 234, 0.2) 0%,
-        rgba(118, 75, 162, 0.2) 100%
-    );
-    border-color: rgba(102, 126, 234, 0.3);
-    transform: translateY(-1px);
-}
-
-.query-actions {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-}
-
-.btn-cancel {
-    padding: 8px 16px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #666;
-    background: rgba(0, 0, 0, 0.05);
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.btn-cancel:hover {
-    background: rgba(0, 0, 0, 0.1);
-}
-
-.btn-submit {
-    padding: 8px 16px;
-    font-size: 13px;
-    font-weight: 600;
-    color: white;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.btn-submit:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-}
-
-.btn-submit:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-/* Response Display */
-
+/* Chat Text */
 .chat-text {
     font-size: 14px;
     line-height: 1.7;
@@ -734,6 +621,7 @@ export default {
     text-align: center;
 }
 
+/* Loading */
 .loading {
     display: flex;
     flex-direction: column;
@@ -781,12 +669,53 @@ export default {
     }
 }
 
+/* Action Area */
+.action-area {
+    display: flex;
+    justify-content: center;
+    padding-top: 12px;
+    border-top: 1px solid rgba(102, 126, 234, 0.1);
+}
+
+.screenshot-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    pointer-events: auto;
+}
+
+.screenshot-action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.screenshot-action-btn:active {
+    transform: translateY(0);
+}
+
+.btn-icon {
+    font-size: 16px;
+}
+
+.btn-label {
+    font-weight: 600;
+}
+
 /* Hover Menu */
 .hover-menu {
-    position: absolute;
-    top: 50%;
-    left: calc(100% + 10px);
-    transform: translateY(-50%);
+    position: fixed;
+    top: 0;
+    left: 0;
     background: rgba(255, 255, 255, 0.98);
     backdrop-filter: blur(10px);
     border-radius: 16px;
@@ -797,7 +726,7 @@ export default {
     gap: 4px;
     min-width: 160px;
     z-index: 100;
-    -webkit-app-region: no-drag;
+    pointer-events: auto;
 }
 
 .menu-item {
@@ -813,6 +742,7 @@ export default {
     font-size: 14px;
     color: #333;
     text-align: left;
+    pointer-events: auto;
 }
 
 .menu-item:hover {
@@ -838,10 +768,7 @@ export default {
 
 /* Status Indicator */
 .status-indicator {
-    position: absolute;
-    top: -35px;
-    left: 50%;
-    transform: translateX(-50%);
+    position: fixed;
     background: rgba(255, 255, 255, 0.98);
     backdrop-filter: blur(10px);
     padding: 8px 16px;
@@ -852,6 +779,7 @@ export default {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     white-space: nowrap;
     z-index: 10;
+    pointer-events: none;
 }
 
 /* Transitions */
@@ -877,12 +805,12 @@ export default {
 
 .menu-enter-from {
     opacity: 0;
-    transform: translateY(-50%) translateX(-10px);
+    transform: translateY(-10px);
 }
 
 .menu-leave-to {
     opacity: 0;
-    transform: translateY(-50%) translateX(-10px);
+    transform: translateY(-10px);
 }
 
 .fade-enter-active,
@@ -893,7 +821,7 @@ export default {
 .fade-enter-from,
 .fade-leave-to {
     opacity: 0;
-    transform: translateX(-50%) translateY(-5px);
+    transform: translateY(-5px);
 }
 
 /* Scrollbar styling */
