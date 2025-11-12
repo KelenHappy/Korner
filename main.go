@@ -21,15 +21,19 @@ func main() {
 
 	// Create application with options
 	err := wails.Run(&options.App{
-		Title:       "Korner - AI Screenshot Assistant",
-		Width:       1024,
-		Height:      768,
-		AlwaysOnTop: true,
+		Title:             "Korner - AI Screenshot Assistant",
+		Width:             220,
+		Height:            220,
+		AlwaysOnTop:       true,
+		StartHidden:       false,
+		HideWindowOnClose: false,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
-		BackgroundColour: &options.RGBA{R: 248, G: 250, B: 252, A: 0},
+		BackgroundColour: &options.RGBA{R: 0, G: 0, B: 0, A: 0},
+		Frameless:        true,
 		OnStartup:        app.startup,
+		OnDomReady:       app.domReady,
 		Bind: []interface{}{
 			app,
 		},

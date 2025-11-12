@@ -5,6 +5,14 @@ export function CaptureScreenshot(arg1:number,arg2:number,arg3:number,arg4:numbe
 
 export function GetPlatform():Promise<string>;
 
+export function HideWindow():Promise<void>;
+
+export function InitSystemTray():Promise<void>;
+
 export function QueryLLM(arg1:string,arg2:string):Promise<string>;
 
 export function RegisterGlobalHotkey():Promise<void>;
+
+export function ShowWindow():Promise<void>;
+
+export function TriggerScreenshot():Promise<void>;

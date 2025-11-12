@@ -1,5 +1,5 @@
 <template>
-    <div id="app" class="h-screen w-screen overflow-hidden">
+    <div id="app" class="h-screen w-screen overflow-hidden bg-transparent">
         <!-- Fullscreen screenshot overlay -->
         <ScreenshotOverlay
             v-if="showScreenshotOverlay"
@@ -7,11 +7,29 @@
             @cancel="cancelScreenshot"
         />
 
-        <!-- First run guide -->
+        <!-- Desktop Pet Mode (floating transparent pet) - ALWAYS SHOW UNLESS SCREENSHOTTING -->
+        <DesktopPet
+            v-if="!showScreenshotOverlay && !currentQuery"
+            :status="petStatus"
+            :chatMessage="latestResponse"
+            :chatLoading="isLoadingResponse"
+            @screenshot="triggerScreenshot"
+            @settings="showSettings"
+            @minimize="minimizeToTray"
+            @close="closeApp"
+        />
 
-        <!-- Main app UI - hidden in compact (floating) mode -->
+        <!-- Query window - shown after screenshot is captured -->
+        <QueryWindow
+            v-if="currentQuery"
+            :screenshot="currentQuery.screenshot"
+            @submit="handleQuerySubmit"
+            @cancel="currentQuery = null"
+        />
+
+        <!-- Main app UI - DISABLED, always use desktop pet mode -->
         <div
-            v-if="!showScreenshotOverlay && !compactMode"
+            v-if="false"
             class="h-full w-full flex flex-col bg-gradient-to-br from-slate-50 to-slate-100"
         >
             <header
@@ -93,13 +111,6 @@
                             </div>
                         </div>
                     </div>
-
-                    <QueryWindow
-                        v-if="currentQuery"
-                        :screenshot="currentQuery.screenshot"
-                        @submit="handleQuerySubmit"
-                        @cancel="currentQuery = null"
-                    />
                 </div>
             </main>
         </div>
@@ -116,10 +127,11 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import ScreenshotOverlay from "./components/ScreenshotOverlay.vue";
 import QueryWindow from "./components/QueryWindow.vue";
 import ResponseWindow from "./components/ResponseWindow.vue";
+import DesktopPet from "./components/DesktopPet.vue";
 
 // Wails Runtime: used for window management (always-on-top, resize, move, fullscreen)
 import {
@@ -131,6 +143,9 @@ import {
     WindowSetSize,
     WindowSetPosition,
     ScreenGetAll,
+    EventsOn,
+    EventsOff,
+    WindowShow,
 } from "../wailsjs/runtime/runtime";
 
 export default {
@@ -139,20 +154,22 @@ export default {
         ScreenshotOverlay,
         QueryWindow,
         ResponseWindow,
+        DesktopPet,
     },
     setup() {
         const showScreenshotOverlay = ref(false);
         const currentQuery = ref(null);
         const conversationHistory = ref([]);
         const showResponseWindow = ref(false);
-        const latestResponse = ref("");
+        const latestResponse = ref(""); // Empty on startup - chatbox hidden
         const isLoadingResponse = ref(false);
         const platform = ref("unknown");
 
-        // Doubao-like compact floating mode
-        const compactMode = ref(false);
+        // Desktop pet mode - ALWAYS true (removed toggle logic)
+        const compactMode = ref(true);
         const prevSize = ref({ w: 0, h: 0 });
         const prevPos = ref({ x: 0, y: 0 });
+        const petStatus = ref("");
 
         onMounted(async () => {
             // Detect platform (from backend if available)
@@ -172,9 +189,28 @@ export default {
                 else platform.value = "unknown";
             }
 
+            // Desktop pet mode is always on (compactMode always true)
+
             // Try to keep window always on top
             try {
                 WindowSetAlwaysOnTop(true);
+            } catch {
+                // ignore if not running under Wails runtime (dev mode)
+            }
+
+            // Listen for system tray screenshot trigger
+            try {
+                EventsOn("trigger-screenshot", () => {
+                    triggerScreenshot();
+                });
+            } catch {
+                // ignore if not running under Wails runtime (dev mode)
+            }
+        });
+
+        onUnmounted(() => {
+            try {
+                EventsOff("trigger-screenshot");
             } catch {
                 // ignore if not running under Wails runtime (dev mode)
             }
@@ -185,13 +221,16 @@ export default {
         );
 
         const triggerScreenshot = async () => {
+            // Show window if hidden
             try {
+                WindowShow();
                 WindowSetAlwaysOnTop(true);
             } catch {}
             try {
                 WindowFullscreen();
             } catch {}
             showScreenshotOverlay.value = true;
+            // Keep compactMode true - don't change it
         };
 
         const handleScreenshotCaptured = (screenshotData) => {
@@ -233,12 +272,18 @@ export default {
             };
             conversationHistory.value.push(query);
 
-            // Prepare response window
-            showResponseWindow.value = true;
+            // Stay in desktop pet mode (always true)
+            showResponseWindow.value = false;
             isLoadingResponse.value = true;
+            latestResponse.value = ""; // Will show loading animation in chatbox
 
             // Clear current query after we saved the screenshot
             currentQuery.value = null;
+
+            // Exit fullscreen and show pet with loading chat
+            try {
+                WindowUnfullscreen();
+            } catch {}
 
             try {
                 if (window.go && window.go.main && window.go.main.App) {
@@ -271,7 +316,7 @@ export default {
 
         // Make the app window compact and keep it floating on all windows
         const pinResponse = async () => {
-            compactMode.value = true;
+            // compactMode is always true
             showResponseWindow.value = true;
             try {
                 prevSize.value = await WindowGetSize();
@@ -302,11 +347,11 @@ export default {
 
         // Close the floating window and restore the window size/position if compact
         const closeResponseWindow = async () => {
-            const wasCompact = compactMode.value;
             showResponseWindow.value = false;
-            compactMode.value = false;
+            // compactMode is always true - no need to restore
 
-            if (wasCompact) {
+            // Try to restore window size if needed
+            if (true) {
                 try {
                     if (prevSize.value.w && prevSize.value.h) {
                         WindowSetSize(prevSize.value.w, prevSize.value.h);
@@ -323,6 +368,34 @@ export default {
             }
         };
 
+        const showSettings = () => {
+            // TODO: Implement settings
+            petStatus.value = "Settings coming soon!";
+            setTimeout(() => {
+                petStatus.value = "";
+            }, 2000);
+        };
+
+        const minimizeToTray = () => {
+            try {
+                if (window.go && window.go.main && window.go.main.App) {
+                    window.go.main.App.HideWindow();
+                }
+            } catch (e) {
+                console.error("Failed to hide window:", e);
+            }
+        };
+
+        const closeApp = () => {
+            try {
+                if (window.wails && window.wails.Quit) {
+                    window.wails.Quit();
+                }
+            } catch (e) {
+                console.error("Failed to quit:", e);
+            }
+        };
+
         return {
             // state
             showScreenshotOverlay,
@@ -333,6 +406,7 @@ export default {
             isLoadingResponse,
             platform,
             compactMode,
+            petStatus,
 
             // computed
             hotkey,
@@ -344,7 +418,32 @@ export default {
             handleQuerySubmit,
             pinResponse,
             closeResponseWindow,
+            showSettings,
+            minimizeToTray,
+            closeApp,
         };
     },
 };
 </script>
+
+<style>
+#app {
+    background: transparent !important;
+    /* Fallback if transparency doesn't work */
+    background: linear-gradient(
+        135deg,
+        rgba(102, 126, 234, 0.05) 0%,
+        rgba(118, 75, 162, 0.05) 100%
+    ) !important;
+}
+
+body {
+    background: transparent !important;
+    overflow: hidden;
+}
+
+/* Force transparency for desktop pet container */
+.desktop-pet-container {
+    background: transparent !important;
+}
+</style>

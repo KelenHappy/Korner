@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"runtime"
+
+	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
@@ -19,6 +21,31 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+}
+
+// domReady is called after the frontend DOM is ready
+func (a *App) domReady(ctx context.Context) {
+	// Window will start hidden (StartHidden: true in main.go)
+	// Initialize system tray after Wails is ready
+	go a.InitSystemTray()
+}
+
+// ShowWindow shows the application window
+func (a *App) ShowWindow() {
+	wailsruntime.WindowShow(a.ctx)
+	wailsruntime.WindowSetAlwaysOnTop(a.ctx, true)
+}
+
+// HideWindow hides the application window
+func (a *App) HideWindow() {
+	wailsruntime.WindowHide(a.ctx)
+}
+
+// TriggerScreenshot triggers the screenshot overlay from system tray
+func (a *App) TriggerScreenshot() {
+	wailsruntime.WindowShow(a.ctx)
+	wailsruntime.WindowSetAlwaysOnTop(a.ctx, true)
+	wailsruntime.EventsEmit(a.ctx, "trigger-screenshot")
 }
 
 // GetPlatform returns the current platform

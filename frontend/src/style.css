@@ -1,3 +1,33 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Transparent background for desktop pet mode */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    background: transparent !important;
+    overflow: hidden;
+}
+
+#app {
+    background: transparent !important;
+}
+
+/* Remove default styles that might interfere with transparency */
+body {
+    -webkit-app-region: drag;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+    -webkit-app-region: no-drag;
+}

@@ -10,10 +10,26 @@ export function GetPlatform() {
   return window['go']['main']['App']['GetPlatform']();
 }
 
+export function HideWindow() {
+  return window['go']['main']['App']['HideWindow']();
+}
+
+export function InitSystemTray() {
+  return window['go']['main']['App']['InitSystemTray']();
+}
+
 export function QueryLLM(arg1, arg2) {
   return window['go']['main']['App']['QueryLLM'](arg1, arg2);
 }
 
 export function RegisterGlobalHotkey() {
   return window['go']['main']['App']['RegisterGlobalHotkey']();
+}
+
+export function ShowWindow() {
+  return window['go']['main']['App']['ShowWindow']();
+}
+
+export function TriggerScreenshot() {
+  return window['go']['main']['App']['TriggerScreenshot']();
 }
