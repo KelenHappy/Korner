@@ -43,14 +43,69 @@
         <!-- Chat bubble (appears next to pet) -->
         <transition name="bubble">
             <div class="chat-bubble" v-if="showChatBubble">
-                <div class="bubble-header">
+                <div class="bubble-header" @mousedown="startDragChatbox">
                     <span class="bubble-title">💬 Chat</span>
                     <button @click="closeChatBubble" class="close-bubble">
                         ✕
                     </button>
                 </div>
                 <div class="bubble-content">
-                    <div v-if="chatLoading" class="loading">
+                    <!-- Query Input Mode - when currentQuery exists -->
+                    <div
+                        v-if="currentQuery && !chatLoading && !chatMessage"
+                        class="query-mode"
+                    >
+                        <!-- Screenshot Preview -->
+                        <div class="screenshot-preview">
+                            <img
+                                :src="currentQuery.screenshot"
+                                alt="Screenshot"
+                                class="preview-img"
+                            />
+                        </div>
+
+                        <!-- Query Input -->
+                        <div class="query-input">
+                            <textarea
+                                v-model="queryText"
+                                @keydown.ctrl.enter="submitQuery"
+                                @keydown.meta.enter="submitQuery"
+                                placeholder="Ask me anything about this screenshot..."
+                                rows="3"
+                                class="query-textarea"
+                                autofocus
+                            ></textarea>
+                        </div>
+
+                        <!-- Quick Prompts -->
+                        <div class="quick-prompts">
+                            <button
+                                v-for="prompt in quickPrompts"
+                                :key="prompt"
+                                @click="queryText = prompt"
+                                class="prompt-btn"
+                            >
+                                {{ prompt }}
+                            </button>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="query-actions">
+                            <button @click="cancelQuery" class="btn-cancel">
+                                Cancel
+                            </button>
+                            <button
+                                @click="submitQuery"
+                                :disabled="!queryText.trim()"
+                                class="btn-submit"
+                            >
+                                <span>Ask AI</span> 💭
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div v-else-if="chatLoading" class="loading">
                         <div class="loading-dots">
                             <span></span>
                             <span></span>
@@ -58,9 +113,13 @@
                         </div>
                         <p class="loading-text">Thinking...</p>
                     </div>
+
+                    <!-- Response Display -->
                     <div v-else-if="chatMessage" class="chat-text">
                         {{ chatMessage }}
                     </div>
+
+                    <!-- Empty State -->
                     <div v-else class="chat-text empty">
                         Hi! Click 📸 to take a screenshot!
                     </div>
@@ -111,7 +170,14 @@ import { WindowSetSize } from "../../wailsjs/runtime/runtime";
 
 export default {
     name: "DesktopPet",
-    emits: ["screenshot", "settings", "minimize", "close"],
+    emits: [
+        "screenshot",
+        "submit-query",
+        "cancel-query",
+        "settings",
+        "minimize",
+        "close",
+    ],
     props: {
         status: {
             type: String,
@@ -125,11 +191,23 @@ export default {
             type: Boolean,
             default: false,
         },
+        currentQuery: {
+            type: Object,
+            default: null,
+        },
     },
     setup(props, { emit }) {
         const showMenu = ref(false);
         const showChatBubble = ref(false);
         const isDragging = ref(false);
+        const queryText = ref("");
+
+        const quickPrompts = [
+            "Explain this",
+            "What's this?",
+            "Summarize",
+            "Translate",
+        ];
 
         const toggleMenu = () => {
             showMenu.value = !showMenu.value;
@@ -187,26 +265,40 @@ export default {
             emit("close");
         };
 
-        // Watch for chat message or loading changes to auto-show bubble
+        // Watch for currentQuery, chat message or loading changes to auto-show bubble
         watch(
-            () => [props.chatMessage, props.chatLoading],
-            ([newMessage, newLoading]) => {
-                // Auto-show when loading starts or message arrives
-                if (newLoading || newMessage) {
+            () => [props.currentQuery, props.chatMessage, props.chatLoading],
+            ([newQuery, newMessage, newLoading]) => {
+                // Auto-show when query, loading starts or message arrives
+                if (newQuery || newLoading || newMessage) {
                     if (!showChatBubble.value) {
                         showChatBubble.value = true;
-                        updateWindowSize();
-                    }
-                } else {
-                    // Hide chatbox when no message and not loading
-                    if (showChatBubble.value) {
-                        showChatBubble.value = false;
                         updateWindowSize();
                     }
                 }
             },
             { immediate: true },
         );
+
+        const submitQuery = () => {
+            const trimmed = queryText.value.trim();
+            if (trimmed) {
+                emit("submit-query", trimmed);
+                queryText.value = "";
+            }
+        };
+
+        const cancelQuery = () => {
+            queryText.value = "";
+            emit("cancel-query");
+            showChatBubble.value = false;
+            updateWindowSize();
+        };
+
+        const startDragChatbox = (e) => {
+            // Prevent dragging when clicking in chatbox
+            e.stopPropagation();
+        };
 
         onMounted(() => {
             updateWindowSize();
@@ -224,6 +316,11 @@ export default {
             handleSettings,
             handleMinimize,
             handleClose,
+            queryText,
+            quickPrompts,
+            submitQuery,
+            cancelQuery,
+            startDragChatbox,
         };
     },
 };
@@ -422,9 +519,9 @@ export default {
 .chat-bubble {
     position: relative;
     flex: 1;
-    min-width: 280px;
-    max-width: 320px;
-    background: rgba(255, 255, 255, 0.95);
+    min-width: 320px;
+    max-width: 400px;
+    background: rgba(255, 255, 255, 0.98);
     backdrop-filter: blur(20px);
     border-radius: 20px;
     box-shadow: 0 12px 40px rgba(102, 126, 234, 0.4);
@@ -454,6 +551,8 @@ export default {
     padding: 12px 16px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
+    cursor: move;
+    user-select: none;
 }
 
 .bubble-title {
@@ -483,10 +582,143 @@ export default {
 
 .bubble-content {
     padding: 16px;
-    min-height: 100px;
-    max-height: 180px;
+    min-height: 120px;
+    max-height: 500px;
     overflow-y: auto;
 }
+
+/* Query Mode */
+.query-mode {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.screenshot-preview {
+    width: 100%;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 2px solid rgba(102, 126, 234, 0.15);
+    background: rgba(102, 126, 234, 0.05);
+}
+
+.preview-img {
+    width: 100%;
+    max-height: 150px;
+    object-fit: contain;
+    display: block;
+}
+
+.query-input {
+    width: 100%;
+}
+
+.query-textarea {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid rgba(102, 126, 234, 0.2);
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #333;
+    resize: none;
+    font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.query-textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.query-textarea::placeholder {
+    color: #999;
+}
+
+.quick-prompts {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+}
+
+.prompt-btn {
+    padding: 6px 10px;
+    font-size: 11px;
+    background: linear-gradient(
+        135deg,
+        rgba(102, 126, 234, 0.1) 0%,
+        rgba(118, 75, 162, 0.1) 100%
+    );
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    color: #555;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.prompt-btn:hover {
+    background: linear-gradient(
+        135deg,
+        rgba(102, 126, 234, 0.2) 0%,
+        rgba(118, 75, 162, 0.2) 100%
+    );
+    border-color: rgba(102, 126, 234, 0.3);
+    transform: translateY(-1px);
+}
+
+.query-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.btn-cancel {
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #666;
+    background: rgba(0, 0, 0, 0.05);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-cancel:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.btn-submit {
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: white;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-submit:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Response Display */
 
 .chat-text {
     font-size: 14px;

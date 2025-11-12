@@ -9,22 +9,17 @@
 
         <!-- Desktop Pet Mode (floating transparent pet) - ALWAYS SHOW UNLESS SCREENSHOTTING -->
         <DesktopPet
-            v-if="!showScreenshotOverlay && !currentQuery"
+            v-if="!showScreenshotOverlay"
             :status="petStatus"
             :chatMessage="latestResponse"
             :chatLoading="isLoadingResponse"
+            :currentQuery="currentQuery"
             @screenshot="triggerScreenshot"
+            @submit-query="handleQuerySubmit"
+            @cancel-query="currentQuery = null"
             @settings="showSettings"
             @minimize="minimizeToTray"
             @close="closeApp"
-        />
-
-        <!-- Query window - shown after screenshot is captured -->
-        <QueryWindow
-            v-if="currentQuery"
-            :screenshot="currentQuery.screenshot"
-            @submit="handleQuerySubmit"
-            @cancel="currentQuery = null"
         />
 
         <!-- Main app UI - DISABLED, always use desktop pet mode -->
@@ -129,7 +124,6 @@
 <script>
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import ScreenshotOverlay from "./components/ScreenshotOverlay.vue";
-import QueryWindow from "./components/QueryWindow.vue";
 import ResponseWindow from "./components/ResponseWindow.vue";
 import DesktopPet from "./components/DesktopPet.vue";
 
@@ -152,7 +146,6 @@ export default {
     name: "App",
     components: {
         ScreenshotOverlay,
-        QueryWindow,
         ResponseWindow,
         DesktopPet,
     },

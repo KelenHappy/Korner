@@ -1,64 +1,64 @@
 <template>
-    <div class="query-window-overlay">
+    <div class="query-window-container">
         <div
-            class="bg-white rounded-2xl shadow-2xl border-2 border-purple-200 p-6 max-w-2xl w-full mx-4 backdrop-blur-xl"
-            style="background: rgba(255, 255, 255, 0.98)"
+            ref="queryDialog"
+            class="query-dialog"
+            :style="{ top: position.y + 'px', left: position.x + 'px' }"
         >
-            <h3
-                class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-500 mb-4"
+            <!-- Draggable header -->
+            <div
+                class="query-header"
+                @mousedown="startDrag"
+                :style="{ cursor: isDragging ? 'grabbing' : 'grab' }"
             >
-                Ask about this screenshot
-            </h3>
+                <h3 class="query-title">💭 Ask about this screenshot</h3>
+                <button @click="cancel" class="close-btn" title="Close">
+                    ✕
+                </button>
+            </div>
 
             <!-- Screenshot Preview -->
-            <div class="mb-4">
+            <div class="screenshot-preview">
                 <img
                     :src="screenshot"
                     alt="Screenshot"
-                    class="w-full rounded-lg border-2 border-purple-100 max-h-64 object-contain bg-slate-50 shadow-md"
+                    class="screenshot-img"
                 />
             </div>
 
             <!-- Query Input -->
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-slate-700 mb-2">
-                    Your Question
-                </label>
+            <div class="query-input-section">
+                <label class="input-label">Your Question</label>
                 <textarea
                     v-model="queryText"
                     @keydown.ctrl.enter="submit"
                     @keydown.meta.enter="submit"
-                    class="w-full px-4 py-3 border-2 border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none transition-all"
-                    rows="4"
+                    class="query-textarea"
+                    rows="3"
                     placeholder="e.g., 'Explain this code', 'What's wrong with this error?', 'Summarize this chart'..."
                     autofocus
                 ></textarea>
-                <div class="flex items-center justify-between mt-2">
-                    <span class="text-xs text-slate-500">
+                <div class="input-footer">
+                    <span class="shortcut-hint">
                         Press
-                        <kbd
-                            class="px-1.5 py-0.5 bg-slate-100 rounded text-xs border border-slate-300"
-                            >{{ submitKey }}</kbd
-                        >
+                        <kbd class="kbd">{{ submitKey }}</kbd>
                         to submit
                     </span>
-                    <span class="text-xs text-slate-400"
+                    <span class="char-count"
                         >{{ queryText.length }} / 1000</span
                     >
                 </div>
             </div>
 
             <!-- Quick Prompts -->
-            <div class="mb-6">
-                <p class="text-xs font-medium text-slate-600 mb-2">
-                    Quick prompts:
-                </p>
-                <div class="flex flex-wrap gap-2">
+            <div class="quick-prompts">
+                <p class="prompts-label">Quick prompts:</p>
+                <div class="prompts-grid">
                     <button
                         v-for="prompt in quickPrompts"
                         :key="prompt"
                         @click="queryText = prompt"
-                        class="px-3 py-1.5 text-xs bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 text-slate-700 rounded-full transition-all shadow-sm hover:shadow"
+                        class="prompt-btn"
                     >
                         {{ prompt }}
                     </button>
@@ -66,20 +66,15 @@
             </div>
 
             <!-- Actions -->
-            <div class="flex items-center justify-end space-x-3">
-                <button
-                    @click="cancel"
-                    class="px-4 py-2 text-slate-600 hover:text-slate-800 font-medium transition-colors"
-                >
-                    Cancel
-                </button>
+            <div class="actions">
+                <button @click="cancel" class="btn-cancel">Cancel</button>
                 <button
                     @click="submit"
                     :disabled="!queryText.trim()"
-                    class="px-6 py-2 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-all shadow-lg hover:shadow-xl flex items-center space-x-2"
+                    class="btn-submit"
                 >
                     <svg
-                        class="w-5 h-5"
+                        class="icon"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -99,7 +94,7 @@
 </template>
 
 <script>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 
 export default {
     name: "QueryWindow",
@@ -112,6 +107,11 @@ export default {
     emits: ["submit", "cancel"],
     setup(props, { emit }) {
         const queryText = ref("");
+        const queryDialog = ref(null);
+        const position = ref({ x: 0, y: 0 });
+        const isDragging = ref(false);
+        const dragOffset = ref({ x: 0, y: 0 });
+
         const quickPrompts = [
             "Explain this code",
             "What does this mean?",
@@ -127,6 +127,58 @@ export default {
 
         const submitKey = computed(() => {
             return isMac.value ? "Cmd+Enter" : "Ctrl+Enter";
+        });
+
+        // Position dialog in top-right corner on mount
+        onMounted(() => {
+            const margin = 20;
+            const dialogWidth = 420;
+            position.value = {
+                x: window.innerWidth - dialogWidth - margin,
+                y: margin,
+            };
+        });
+
+        // Dragging functionality
+        const startDrag = (e) => {
+            isDragging.value = true;
+            dragOffset.value = {
+                x: e.clientX - position.value.x,
+                y: e.clientY - position.value.y,
+            };
+
+            document.addEventListener("mousemove", onDrag);
+            document.addEventListener("mouseup", stopDrag);
+        };
+
+        const onDrag = (e) => {
+            if (!isDragging.value) return;
+
+            const newX = e.clientX - dragOffset.value.x;
+            const newY = e.clientY - dragOffset.value.y;
+
+            // Constrain to window bounds
+            const dialogWidth = queryDialog.value?.offsetWidth || 420;
+            const dialogHeight = queryDialog.value?.offsetHeight || 600;
+
+            position.value = {
+                x: Math.max(0, Math.min(newX, window.innerWidth - dialogWidth)),
+                y: Math.max(
+                    0,
+                    Math.min(newY, window.innerHeight - dialogHeight),
+                ),
+            };
+        };
+
+        const stopDrag = () => {
+            isDragging.value = false;
+            document.removeEventListener("mousemove", onDrag);
+            document.removeEventListener("mouseup", stopDrag);
+        };
+
+        onUnmounted(() => {
+            document.removeEventListener("mousemove", onDrag);
+            document.removeEventListener("mouseup", stopDrag);
         });
 
         const submit = () => {
@@ -148,49 +200,281 @@ export default {
             submitKey,
             submit,
             cancel,
+            queryDialog,
+            position,
+            isDragging,
+            startDrag,
         };
     },
 };
 </script>
 
 <style scoped>
-.query-window-overlay {
+.query-window-container {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
+    pointer-events: none;
+    z-index: 9998;
+}
+
+.query-dialog {
+    position: fixed;
+    width: 420px;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3);
+    border: 2px solid rgba(102, 126, 234, 0.2);
+    overflow: hidden;
+    pointer-events: auto;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Header */
+.query-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    user-select: none;
+    -webkit-app-region: no-drag;
+}
+
+.query-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: white;
+    margin: 0;
+}
+
+.close-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border-radius: 50%;
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(4px);
-    z-index: 9999;
-    padding: 20px;
-    animation: fadeIn 0.2s ease-out;
+    font-size: 18px;
+    transition: all 0.2s ease;
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
+.close-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
 }
 
-.query-window-overlay > div {
-    animation: slideUp 0.3s ease-out;
+/* Screenshot Preview */
+.screenshot-preview {
+    padding: 16px 20px 12px;
+    background: rgba(102, 126, 234, 0.03);
 }
 
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+.screenshot-img {
+    width: 100%;
+    max-height: 180px;
+    object-fit: contain;
+    border-radius: 12px;
+    border: 2px solid rgba(102, 126, 234, 0.15);
+    background: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Query Input */
+.query-input-section {
+    padding: 12px 20px;
+}
+
+.input-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #4b5563;
+    margin-bottom: 8px;
+}
+
+.query-textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid rgba(102, 126, 234, 0.2);
+    border-radius: 10px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #1f2937;
+    resize: none;
+    transition: all 0.2s ease;
+    font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    box-sizing: border-box;
+}
+
+.query-textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.query-textarea::placeholder {
+    color: #9ca3af;
+}
+
+.input-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+}
+
+.shortcut-hint {
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.kbd {
+    display: inline-block;
+    padding: 2px 6px;
+    background: rgba(102, 126, 234, 0.1);
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: monospace;
+    color: #667eea;
+}
+
+.char-count {
+    font-size: 11px;
+    color: #9ca3af;
+}
+
+/* Quick Prompts */
+.quick-prompts {
+    padding: 0 20px 12px;
+}
+
+.prompts-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    margin: 0 0 8px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.prompts-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+}
+
+.prompt-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+    background: linear-gradient(
+        135deg,
+        rgba(102, 126, 234, 0.08) 0%,
+        rgba(118, 75, 162, 0.08) 100%
+    );
+    border: 1px solid rgba(102, 126, 234, 0.15);
+    color: #4b5563;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.prompt-btn:hover {
+    background: linear-gradient(
+        135deg,
+        rgba(102, 126, 234, 0.15) 0%,
+        rgba(118, 75, 162, 0.15) 100%
+    );
+    border-color: rgba(102, 126, 234, 0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+}
+
+/* Actions */
+.actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 20px;
+    background: rgba(102, 126, 234, 0.03);
+    border-top: 1px solid rgba(102, 126, 234, 0.1);
+}
+
+.btn-cancel {
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #6b7280;
+    background: transparent;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-cancel:hover {
+    color: #374151;
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.btn-submit {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: white;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-submit:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-submit:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.btn-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.btn-submit .icon {
+    width: 18px;
+    height: 18px;
 }
 </style>
