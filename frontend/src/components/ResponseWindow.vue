@@ -1,6 +1,6 @@
 <template>
     <div
-        class="fixed bottom-6 right-6 w-96 bg-white rounded-lg shadow-2xl border border-slate-200 z-50 max-h-96 flex flex-col"
+        class="response-window bg-white rounded-lg shadow-2xl border border-slate-200 z-50 flex flex-col"
     >
         <div
             class="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-gradient-to-r from-purple-50 to-pink-50"
@@ -63,3 +63,15 @@ export default {
     },
 };
 </script>
+<style scoped>
+.response-window {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 400px;
+    max-height: 85vh;
+    pointer-events: auto;
+}
+</style>

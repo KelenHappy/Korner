@@ -22,13 +22,14 @@ func onReady(app *App) {
 	// Set the icon (Windows will show this in notification area)
 	systray.SetIcon(iconData)
 	systray.SetTitle("Korner")
-	systray.SetTooltip("Korner - AI Screenshot Assistant")
+	systray.SetTooltip("Korner - AI Screenshot Assistant (Ctrl+Alt+Q)")
 
 	// Create menu items
-	mScreenshot := systray.AddMenuItem("📸 New Screenshot", "Take a new screenshot")
+	mShowMenu := systray.AddMenuItem("Show Menu (Ctrl+Alt+Q)", "Show Pie Menu")
+	mScreenshot := systray.AddMenuItem("📸 Screenshot", "Take a screenshot")
+	mAskQuestion := systray.AddMenuItem("💬 Ask Question", "Ask a question")
 	systray.AddSeparator()
-	mShow := systray.AddMenuItem("Show Window", "Show the main window")
-	mHide := systray.AddMenuItem("Hide Window", "Hide the main window")
+	mSettings := systray.AddMenuItem("⚙️ Settings", "Open settings")
 	systray.AddSeparator()
 	mQuit := systray.AddMenuItem("Quit", "Quit the application")
 
@@ -36,23 +37,31 @@ func onReady(app *App) {
 	go func() {
 		for {
 			select {
+			case <-mShowMenu.ClickedCh:
+				// Show Pie Menu at mouse position
+				if app.ctx != nil {
+					showPieMenuAtMouse(app)
+				}
+
 			case <-mScreenshot.ClickedCh:
-				// Trigger screenshot
+				// Show menu and trigger screenshot
 				if app.ctx != nil {
-					app.TriggerScreenshot()
+					showPieMenuAtMouse(app)
+					wailsruntime.EventsEmit(app.ctx, "trigger-screenshot")
 				}
 
-			case <-mShow.ClickedCh:
-				// Show window
+			case <-mAskQuestion.ClickedCh:
+				// Show menu and trigger ask question
 				if app.ctx != nil {
-					wailsruntime.WindowShow(app.ctx)
-					wailsruntime.WindowSetAlwaysOnTop(app.ctx, true)
+					showPieMenuAtMouse(app)
+					wailsruntime.EventsEmit(app.ctx, "trigger-question")
 				}
 
-			case <-mHide.ClickedCh:
-				// Hide window
+			case <-mSettings.ClickedCh:
+				// Show menu and trigger settings
 				if app.ctx != nil {
-					wailsruntime.WindowHide(app.ctx)
+					showPieMenuAtMouse(app)
+					wailsruntime.EventsEmit(app.ctx, "trigger-settings")
 				}
 
 			case <-mQuit.ClickedCh:
@@ -72,4 +81,13 @@ func onReady(app *App) {
 func onExit() {
 	// Cleanup when systray exits
 	log.Println("System tray exiting")
+}
+
+func showPieMenuAtMouse(app *App) {
+	if app.ctx != nil {
+		wailsruntime.WindowShow(app.ctx)
+		wailsruntime.WindowSetAlwaysOnTop(app.ctx, true)
+		// Emit event to show menu - position will be handled by frontend
+		wailsruntime.EventsEmit(app.ctx, "trigger-pie-menu", 0, 0)
+	}
 }

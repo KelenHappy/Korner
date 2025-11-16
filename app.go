@@ -26,11 +26,19 @@ func (a *App) startup(ctx context.Context) {
 
 // domReady is called after the frontend DOM is ready
 func (a *App) domReady(ctx context.Context) {
-	// Window will start hidden (StartHidden: true in main.go)
 	// Log DPI scale for diagnostics
 	logDPIInfo()
-	// Initialize system tray after Wails is ready
+	
+	// Initialize system tray
 	go a.InitSystemTray()
+	
+	// Register global hotkey (Ctrl+Alt+Q)
+	go func() {
+		err := a.RegisterGlobalHotkey()
+		if err != nil {
+			log.Printf("Failed to register global hotkey: %v", err)
+		}
+	}()
 }
 
 // ShowWindow shows the application window
@@ -61,10 +69,17 @@ func (a *App) GetWindowPosition() (int, int) {
 	return wailsruntime.WindowGetPosition(a.ctx)
 }
 
+// SetWindowPosition sets the window's screen position to (x, y)
+func (a *App) SetWindowPosition(x, y int) {
+	wailsruntime.WindowSetPosition(a.ctx, x, y)
+}
+
+// PositionWindowAt positions the Pie Menu window at the given screen coordinates
+func (a *App) PositionWindowAt(x, y int) {
+	wailsruntime.WindowSetPosition(a.ctx, x, y)
+}
+
 // GetDPIScale returns the current display DPI scaling factor
-// Platform implementations:
-// - Windows: Returns actual DPI scale (1.0, 1.25, 1.5, 2.0, etc.)
-// - Other platforms: Returns 1.0 (not yet implemented)
 func (a *App) GetDPIScale() float64 {
 	return getDPIScale()
 }
@@ -75,31 +90,16 @@ func (a *App) GetScreenSize() (int, int) {
 }
 
 // CaptureScreenshot captures a screenshot of the specified region
-// and returns it as a data URL string (data:image/png;base64,...)
-//
-// Platform implementations:
-// - macOS (darwin): Uses screencapture command (see app_screenshot_darwin.go)
-// - Windows: Planned (see app_screenshot_others.go stub)
-//
-// Parameters:
-//
-//	x, y, width, height: Screenshot region in viewport coordinates (relative to window)
-//	If width or height are 0, platform may open interactive selection UI
 func (a *App) CaptureScreenshot(x, y, width, height int) (string, error) {
 	ctx := a.ctx
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
-	// Get window position to convert viewport coords to screen coords
 	winX, winY := wailsruntime.WindowGetPosition(a.ctx)
-
-	// Get actual screen size and DPI for scaling
 	screenWidth, screenHeight := getScreenSize()
 	dpiScale := getDPIScale()
 
-	// Calculate the scaling factor: actual screen size / viewport size
-	// viewport size = screen size / DPI scale
 	expectedViewportWidth := int(float64(screenWidth) / dpiScale)
 	expectedViewportHeight := int(float64(screenHeight) / dpiScale)
 
@@ -107,7 +107,6 @@ func (a *App) CaptureScreenshot(x, y, width, height int) (string, error) {
 	log.Printf("DEBUG: Screen size: %dx%d, DPI: %.2f, Expected viewport: %dx%d\n",
 		screenWidth, screenHeight, dpiScale, expectedViewportWidth, expectedViewportHeight)
 
-	// Add window offset to viewport coordinates
 	screenX := x + winX
 	screenY := y + winY
 	log.Printf("DEBUG: Screen coords after window offset: (%d, %d, %d, %d)\n", screenX, screenY, width, height)
@@ -115,18 +114,7 @@ func (a *App) CaptureScreenshot(x, y, width, height int) (string, error) {
 	return captureScreenshot(ctx, screenX, screenY, width, height)
 }
 
-// QueryLLM sends a query with screenshot to AMD GPT OSS 120B model.
-// It calls the OpenAI-compatible endpoint specified in environment variables:
-//   - AMD_LLM_ENDPOINT: Full URL to the chat completions endpoint
-//   - AMD_API_KEY: Bearer token for authentication
-//   - MODEL_NAME: Optional model identifier (defaults to "gpt-oss-120b")
-//
-// The screenshotBase64 can be:
-//   - Empty string (text-only query)
-//   - Raw base64 string (will be prefixed with data URL)
-//   - Full data URL (data:image/png;base64,...)
-//
-// Returns the assistant's response text, or an error if the API call fails.
+// QueryLLM sends a query with screenshot to AMD GPT OSS 120B model
 func (a *App) QueryLLM(query string, screenshotBase64 string) (string, error) {
 	ctx := a.ctx
 	if ctx == nil {
@@ -138,14 +126,4 @@ func (a *App) QueryLLM(query string, screenshotBase64 string) (string, error) {
 // OpenDevTools opens the developer tools window
 func (a *App) OpenDevTools() {
 	wailsruntime.WindowShow(a.ctx)
-	// Note: In production builds, DevTools must be enabled via build flags
-	// This is a placeholder for triggering DevTools programmatically
-}
-
-// RegisterGlobalHotkey registers a global hotkey
-func (a *App) RegisterGlobalHotkey() error {
-	// TODO: Implement platform-specific global hotkey registration
-	// Windows: Use RegisterHotKey Win32 API
-	// macOS: Use Carbon Event Manager via CGO
-	return nil
 }

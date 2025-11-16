@@ -8,19 +8,9 @@
             }"
             @mousedown="startDragPet"
         >
-            <!-- Pet character -->
+            <!-- Pet character with logo -->
             <div class="pet-character">
-                <div class="pet-face">
-                    <div class="eyes">
-                        <div class="eye left">
-                            <div class="pupil"></div>
-                        </div>
-                        <div class="eye right">
-                            <div class="pupil"></div>
-                        </div>
-                    </div>
-                    <div class="mouth"></div>
-                </div>
+                <img src="/icon.png" alt="Korner Pet" class="pet-logo" />
 
                 <!-- Floating action button -->
                 <button
@@ -355,8 +345,8 @@ export default {
 
 .pet-container {
     position: fixed;
-    width: 150px;
-    height: 150px;
+    width: 80px;
+    height: 80px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -373,11 +363,11 @@ export default {
 /* Pet Character */
 .pet-character {
     position: relative;
-    width: 120px;
-    height: 120px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    width: 60px;
+    height: 60px;
+    background: transparent;
     border-radius: 50%;
-    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -385,11 +375,19 @@ export default {
         transform 0.3s ease,
         box-shadow 0.3s ease;
     animation: float 3s ease-in-out infinite;
+    overflow: hidden;
 }
 
 .pet-character:hover {
-    transform: scale(1.05);
-    box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+.pet-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
 }
 
 @keyframes float {
@@ -402,80 +400,18 @@ export default {
     }
 }
 
-/* Face */
-.pet-face {
-    position: relative;
-    width: 80%;
-    height: 80%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Eyes */
-.eyes {
-    display: flex;
-    gap: 20px;
-    margin-bottom: 10px;
-}
-
-.eye {
-    width: 20px;
-    height: 20px;
-    background: white;
-    border-radius: 50%;
-    position: relative;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    animation: blink 4s infinite;
-}
-
-@keyframes blink {
-    0%,
-    48%,
-    52%,
-    100% {
-        transform: scaleY(1);
-    }
-    50% {
-        transform: scaleY(0.1);
-    }
-}
-
-.pupil {
-    width: 10px;
-    height: 10px;
-    background: #333;
-    border-radius: 50%;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    transition: all 0.1s ease;
-}
-
-/* Mouth */
-.mouth {
-    width: 30px;
-    height: 15px;
-    border: 3px solid white;
-    border-top: none;
-    border-radius: 0 0 30px 30px;
-    margin-top: 5px;
-}
-
 /* Action Button */
 .action-btn {
     position: absolute;
-    bottom: -5px;
-    right: -5px;
-    width: 45px;
-    height: 45px;
+    bottom: -3px;
+    right: -3px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: 3px solid white;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-    font-size: 22px;
+    border: 2px solid white;
+    box-shadow: 0 3px 10px rgba(102, 126, 234, 0.4);
+    font-size: 16px;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
@@ -486,8 +422,8 @@ export default {
 }
 
 .action-btn:hover {
-    transform: scale(1.15) rotate(10deg);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    transform: scale(1.15) rotate(15deg);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.6);
 }
 
 .action-btn:active {
@@ -497,15 +433,15 @@ export default {
 /* Menu Toggle */
 .menu-toggle {
     position: absolute;
-    bottom: -5px;
-    left: -5px;
-    width: 36px;
-    height: 36px;
+    bottom: -3px;
+    left: -3px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
     border: 2px solid rgba(102, 126, 234, 0.3);
-    font-size: 16px;
+    font-size: 14px;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
@@ -560,11 +496,12 @@ export default {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 16px;
+    padding: 12px 15px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
+    font-weight: 600;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     cursor: move;
-    user-select: none;
 }
 
 .bubble-title {

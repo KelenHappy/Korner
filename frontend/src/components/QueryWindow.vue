@@ -178,18 +178,12 @@ export default {
 <style scoped>
 .query-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(8px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     z-index: 10000;
-    padding: 40px;
     animation: fadeIn 0.2s ease-out;
+    pointer-events: auto;
 }
 
 @keyframes fadeIn {
@@ -204,9 +198,9 @@ export default {
 .query-modal {
     background: white;
     border-radius: 20px;
-    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.3);
-    width: 100%;
-    max-width: 1200px;
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+    width: 1200px;
+    max-width: 90vw;
     max-height: 85vh;
     display: flex;
     flex-direction: column;

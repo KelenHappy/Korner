@@ -29,11 +29,12 @@ func main() {
 	// Create an instance of the app structure
 	app := NewApp()
 
-	// Create application with options
+	// Hybrid Mode: Full-screen transparent window with floating icon + pie menu
 	err = wails.Run(&options.App{
-		Title:             "Korner - AI Screenshot Assistant",
-		Width:             800,
-		Height:            600,
+		Title:             "Korner - AI Assistant",
+		Width:             100, // Small window for floating icon
+		Height:            100, // Small window for floating icon
+		Fullscreen:        false,
 		AlwaysOnTop:       true,
 		StartHidden:       false,
 		HideWindowOnClose: false,
@@ -41,14 +42,14 @@ func main() {
 			Assets: assets,
 		},
 		BackgroundColour: &options.RGBA{R: 0, G: 0, B: 0, A: 0},
-		Frameless:        false,
+		Frameless:        true,
 		OnStartup:        app.startup,
 		OnDomReady:       app.domReady,
 		Bind: []interface{}{
 			app,
 		},
 		Debug: options.Debug{
-			OpenInspectorOnStartup: true,
+			OpenInspectorOnStartup: false,
 		},
 		Linux: &linux.Options{
 			Icon:                []byte{},
@@ -59,7 +60,7 @@ func main() {
 			TitleBar: mac.TitleBarHiddenInset(),
 			About: &mac.AboutInfo{
 				Title:   "Korner",
-				Message: "AI Screenshot Assistant powered by AMD GPT OSS 120B\n\n© 2025 Korner Team",
+				Message: "AI Screenshot Assistant\n\n© 2025 Korner Team",
 			},
 			WebviewIsTransparent: true,
 			WindowIsTranslucent:  true,
