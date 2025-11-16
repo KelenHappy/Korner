@@ -69,6 +69,7 @@ import {
     WindowSetPosition,
     WindowGetPosition,
     WindowGetSize,
+    WindowCenter,
     EventsOn,
     EventsOff,
 } from "../wailsjs/runtime/runtime";
@@ -188,19 +189,23 @@ export default {
         };
 
         const handleScreenshot = async () => {
-            await hidePieMenu();
-            // 記錄當前視窗狀態
+            // 記錄當前視窗狀態（在隱藏菜單之前）
             try {
                 const pos = await WindowGetPosition();
                 const size = await WindowGetSize();
                 beforeScreenshotState.value = { pos, size };
             } catch {}
 
-            showScreenshotOverlay.value = true;
+            // 先開全螢幕
             try {
-                // 截圖時需要全螢幕
                 WindowFullscreen();
             } catch {}
+
+            // 顯示截圖覆蓋層
+            showScreenshotOverlay.value = true;
+
+            // 隱藏菜單狀態（全螢幕後菜單會被覆蓋，這裡只是更新狀態）
+            showPieMenu.value = false;
         };
 
         const handleAskQuestion = async () => {
@@ -209,16 +214,36 @@ export default {
                 screenshot: null,
                 timestamp: new Date(),
             };
+
+            // 調整視窗大小並置中
+            try {
+                WindowSetSize(1200, 800);
+                // 等待大小調整完成
+                await new Promise((resolve) => setTimeout(resolve, 50));
+                // 置中視窗
+                WindowCenter();
+            } catch (error) {
+                console.log("Failed to resize/center window:", error);
+            }
+
             showQueryWindow.value = true;
-            // 調整視窗大小以顯示 QueryWindow
-            await resizeWindowKeepCenter(1200, 800);
         };
 
         const handleSettings = async () => {
             await hidePieMenu();
+
+            // 調整視窗大小並置中
+            try {
+                WindowSetSize(720, 600);
+                // 等待大小調整完成
+                await new Promise((resolve) => setTimeout(resolve, 50));
+                // 置中視窗
+                WindowCenter();
+            } catch (error) {
+                console.log("Failed to resize/center window:", error);
+            }
+
             showSettingsWindow.value = true;
-            // Adjust window size for settings
-            await resizeWindowKeepCenter(720, 600);
         };
 
         const closeSettings = async () => {
@@ -279,22 +304,25 @@ export default {
                 WindowUnfullscreen();
             } catch {}
 
-            // 恢復視窗位置並調整到 QueryWindow 大小
-            if (beforeScreenshotState.value) {
-                try {
-                    WindowSetPosition(
-                        beforeScreenshotState.value.pos.x,
-                        beforeScreenshotState.value.pos.y,
-                    );
-                } catch {}
-                beforeScreenshotState.value = null;
+            // 等待取消全螢幕完成
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
+            // 調整視窗大小並置中
+            try {
+                WindowSetSize(1200, 800);
+                // 等待大小調整完成
+                await new Promise((resolve) => setTimeout(resolve, 50));
+                // 置中視窗
+                WindowCenter();
+            } catch (error) {
+                console.log("Failed to resize/center window:", error);
             }
 
-            await resizeWindowKeepCenter(1200, 800);
+            beforeScreenshotState.value = null;
 
             setTimeout(() => {
                 showQueryWindow.value = true;
-            }, 200);
+            }, 100);
         };
 
         const cancelQueryWindow = async () => {
@@ -338,10 +366,20 @@ export default {
                 isLoadingResponse.value = false;
             }
 
-            // 顯示 ResponseWindow，調整視窗到合適大小
+            // 調整視窗大小並置中
+            try {
+                WindowSetSize(450, 500);
+                // 等待大小調整完成
+                await new Promise((resolve) => setTimeout(resolve, 50));
+                // 置中視窗
+                WindowCenter();
+            } catch (error) {
+                console.log("Failed to resize/center window:", error);
+            }
+
+            // 顯示 ResponseWindow
             showResponseWindow.value = true;
             currentQuery.value = null;
-            await resizeWindowKeepCenter(450, 500);
         };
 
         const closeResponseWindow = async () => {
