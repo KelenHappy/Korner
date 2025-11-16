@@ -23,7 +23,6 @@
                         :class="{ active: activeItem === 0 }"
                     >
                         <div class="pie-item-icon">📸</div>
-                        <div class="pie-item-label">Screenshot</div>
                     </div>
 
                     <!-- Ask (right) -->
@@ -36,7 +35,6 @@
                         :class="{ active: activeItem === 1 }"
                     >
                         <div class="pie-item-icon">💬</div>
-                        <div class="pie-item-label">Ask</div>
                     </div>
 
                     <!-- Settings (bottom) -->
@@ -49,7 +47,6 @@
                         :class="{ active: activeItem === 2 }"
                     >
                         <div class="pie-item-icon">⚙️</div>
-                        <div class="pie-item-label">Settings</div>
                     </div>
 
                     <!-- Hide (left) -->
@@ -62,7 +59,6 @@
                         :class="{ active: activeItem === 3 }"
                     >
                         <div class="pie-item-icon">✕</div>
-                        <div class="pie-item-label">Hide</div>
                     </div>
                 </div>
             </div>
@@ -205,21 +201,13 @@ export default {
 }
 
 .pie-item-icon {
-    font-size: 16px;
-    margin-bottom: 1px;
+    font-size: 20px;
     transition: transform 0.2s ease;
 }
 
 .pie-item:hover .pie-item-icon,
 .pie-item.active .pie-item-icon {
     transform: scale(1.1);
-}
-
-.pie-item-label {
-    font-size: 6px;
-    font-weight: 600;
-    text-align: center;
-    white-space: nowrap;
 }
 
 /* Item colors */

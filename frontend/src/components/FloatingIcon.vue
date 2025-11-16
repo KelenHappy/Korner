@@ -1,7 +1,7 @@
 <template>
     <div class="floating-icon" @mousedown="onMouseDown" @click="onClick">
         <div class="icon-container" :class="{ pulse: showPulse }">
-            <div class="icon-emoji">🌸</div>
+            <div class="icon-emoji">{{ icon }}</div>
             <div class="icon-glow"></div>
         </div>
         <div class="icon-tooltip" v-if="showTooltip">Korner AI</div>
@@ -17,6 +17,12 @@ import {
 
 export default {
     name: "FloatingIcon",
+    props: {
+        icon: {
+            type: String,
+            default: "🌸",
+        },
+    },
     emits: ["show-menu"],
     setup(props, { emit }) {
         const isDragging = ref(false);
