@@ -33,6 +33,8 @@ export default {
         const hasMoved = ref(false);
 
         let tooltipTimer = null;
+        let rafId = null;
+        let pendingPosition = null;
 
         const onMouseDown = async (e) => {
             if (e.button !== 0) return; // Only left click
@@ -69,14 +71,26 @@ export default {
                 hasMoved.value = true;
             }
 
-            // Move the entire window
-            try {
-                WindowSetPosition(
-                    windowStart.x + deltaX,
-                    windowStart.y + deltaY,
-                );
-            } catch (error) {
-                console.log("Failed to set window position:", error);
+            // Store pending position
+            pendingPosition = {
+                x: windowStart.x + deltaX,
+                y: windowStart.y + deltaY,
+            };
+
+            // Schedule update using requestAnimationFrame
+            if (!rafId) {
+                rafId = requestAnimationFrame(updateWindowPosition);
+            }
+        };
+
+        const updateWindowPosition = () => {
+            rafId = null;
+            if (pendingPosition && isDragging.value) {
+                try {
+                    WindowSetPosition(pendingPosition.x, pendingPosition.y);
+                } catch (error) {
+                    console.log("Failed to set window position:", error);
+                }
             }
         };
 
@@ -84,6 +98,22 @@ export default {
             isDragging.value = false;
             document.removeEventListener("mousemove", onMouseMove);
             document.removeEventListener("mouseup", onMouseUp);
+
+            // Cancel any pending animation frame
+            if (rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+            }
+
+            // Apply final position if there's a pending one
+            if (pendingPosition) {
+                try {
+                    WindowSetPosition(pendingPosition.x, pendingPosition.y);
+                } catch (error) {
+                    console.log("Failed to set window position:", error);
+                }
+                pendingPosition = null;
+            }
         };
 
         const onClick = (e) => {
@@ -125,6 +155,9 @@ export default {
             document.removeEventListener("mouseup", onMouseUp);
             if (tooltipTimer) {
                 clearTimeout(tooltipTimer);
+            }
+            if (rafId) {
+                cancelAnimationFrame(rafId);
             }
         });
 

@@ -103,6 +103,9 @@ export default {
             height: 0,
         });
 
+        let rafId = null;
+        let pendingUpdate = false;
+
         onMounted(async () => {
             // Focus the overlay for keyboard events
             overlayRef.value?.focus();
@@ -121,7 +124,15 @@ export default {
             if (!isSelecting.value) return;
             endPoint.x = event.clientX;
             endPoint.y = event.clientY;
-            updateSelectionRect();
+
+            // Use requestAnimationFrame to optimize updates
+            if (!pendingUpdate) {
+                pendingUpdate = true;
+                rafId = requestAnimationFrame(() => {
+                    updateSelectionRect();
+                    pendingUpdate = false;
+                });
+            }
         };
 
         const updateSelectionRect = () => {
@@ -146,6 +157,16 @@ export default {
         const endSelection = async () => {
             if (!isSelecting.value) return;
             isSelecting.value = false;
+
+            // Cancel any pending animation frame
+            if (rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+                pendingUpdate = false;
+            }
+
+            // Apply final update if needed
+            updateSelectionRect();
 
             // Minimum selection size
             if (selectionRect.width < 10 || selectionRect.height < 10) {
@@ -259,8 +280,22 @@ export default {
         };
 
         const cancel = () => {
+            // Cancel any pending animation frame
+            if (rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+                pendingUpdate = false;
+            }
             emit("cancel");
         };
+
+        onUnmounted(() => {
+            // Clean up animation frame on unmount
+            if (rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+            }
+        });
 
         return {
             overlayRef,
