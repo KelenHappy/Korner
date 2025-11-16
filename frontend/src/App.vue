@@ -3,6 +3,7 @@
         <!-- Floating Icon (hidden during screenshot) -->
         <FloatingIcon
             v-if="!showScreenshotOverlay"
+            :icon="settings.floatingIcon"
             @show-menu="showPieMenuAt"
         />
 
@@ -40,6 +41,14 @@
             :screenshot="lastScreenshot"
             @close="closeResponseWindow"
         />
+
+        <!-- Settings Window -->
+        <SettingsWindow
+            v-if="showSettingsWindow"
+            :current-settings="settings"
+            @close="closeSettings"
+            @save="saveSettings"
+        />
     </div>
 </template>
 
@@ -50,6 +59,7 @@ import PieMenu from "./components/PieMenu.vue";
 import ScreenshotOverlay from "./components/ScreenshotOverlay.vue";
 import QueryWindow from "./components/QueryWindow.vue";
 import ResponseWindow from "./components/ResponseWindow.vue";
+import SettingsWindow from "./components/SettingsWindow.vue";
 
 import {
     WindowSetAlwaysOnTop,
@@ -71,6 +81,7 @@ export default {
         ScreenshotOverlay,
         QueryWindow,
         ResponseWindow,
+        SettingsWindow,
     },
     setup() {
         const showPieMenu = ref(false);
@@ -79,11 +90,18 @@ export default {
         const showScreenshotOverlay = ref(false);
         const showQueryWindow = ref(false);
         const showResponseWindow = ref(false);
+        const showSettingsWindow = ref(false);
         const currentQuery = ref(null);
         const latestResponse = ref("");
         const isLoadingResponse = ref(false);
         const lastScreenshot = ref(null);
         const beforeScreenshotState = ref(null);
+        const settings = ref({
+            apiProvider: "openai",
+            apiKey: "",
+            apiEndpoint: "",
+            floatingIcon: "🌸",
+        });
 
         // 統一的視窗大小調整函數，保持中心點不變
         const resizeWindowKeepCenter = async (newWidth, newHeight) => {
@@ -107,6 +125,14 @@ export default {
             } catch {}
             // 初始設置小視窗 - 只顯示浮動圖標
             await resizeWindowKeepCenter(100, 100);
+
+            // Load settings from localStorage
+            try {
+                const savedSettings = localStorage.getItem("korner-settings");
+                if (savedSettings) {
+                    settings.value = JSON.parse(savedSettings);
+                }
+            } catch {}
 
             // Listen for system tray trigger
             try {
@@ -136,6 +162,8 @@ export default {
                     cancelQueryWindow();
                 } else if (showResponseWindow.value) {
                     closeResponseWindow();
+                } else if (showSettingsWindow.value) {
+                    closeSettings();
                 }
             }
         };
@@ -186,9 +214,31 @@ export default {
             await resizeWindowKeepCenter(1200, 800);
         };
 
-        const handleSettings = () => {
-            hidePieMenu();
-            console.log("Settings clicked");
+        const handleSettings = async () => {
+            await hidePieMenu();
+            showSettingsWindow.value = true;
+            // Adjust window size for settings
+            await resizeWindowKeepCenter(720, 600);
+        };
+
+        const closeSettings = async () => {
+            showSettingsWindow.value = false;
+            // Return to small window
+            await resizeWindowKeepCenter(100, 100);
+        };
+
+        const saveSettings = async (newSettings) => {
+            settings.value = { ...newSettings };
+            // Save to localStorage
+            try {
+                localStorage.setItem(
+                    "korner-settings",
+                    JSON.stringify(settings.value),
+                );
+            } catch (error) {
+                console.error("Failed to save settings:", error);
+            }
+            await closeSettings();
         };
 
         const cancelScreenshot = async () => {
@@ -321,6 +371,10 @@ export default {
             cancelQueryWindow,
             handleQuerySubmit,
             closeResponseWindow,
+            showSettingsWindow,
+            settings,
+            closeSettings,
+            saveSettings,
         };
     },
 };
