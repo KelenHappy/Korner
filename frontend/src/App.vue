@@ -203,9 +203,8 @@ export default {
 
                 menuCenterX.value = x;
                 menuCenterY.value = y;
-                showPieMenu.value = true;
 
-                // 打開後立即調整窗口
+                // 先擴大窗口，再顯示 PieMenu
                 try {
                     const newX = iconScreenPos.value.x - 150;
                     const newY = iconScreenPos.value.y - 150;
@@ -214,6 +213,10 @@ export default {
                 } catch (error) {
                     console.log("Failed to resize window:", error);
                 }
+
+                // 等待窗口調整完成後再顯示 PieMenu
+                await new Promise((resolve) => setTimeout(resolve, 50));
+                showPieMenu.value = true;
             }
         };
 
