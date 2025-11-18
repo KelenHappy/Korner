@@ -3,6 +3,7 @@
         <!-- Draggable pet avatar -->
         <div
             class="pet-container"
+            :class="{ dragging: isDraggingPet }"
             :style="{
                 transform: `translate(${petPosition.x}px, ${petPosition.y}px)`,
             }"
@@ -37,6 +38,7 @@
             <div
                 class="chat-bubble"
                 v-if="showChatBubble"
+                :class="{ dragging: isDraggingChat }"
                 :style="{
                     transform: `translate(${chatPosition.x}px, ${chatPosition.y}px)`,
                 }"
@@ -173,8 +175,8 @@ export default {
         const chatPosition = ref({ x: 180, y: 20 });
 
         // Drag state
-        let isDraggingPet = false;
-        let isDraggingChat = false;
+        const isDraggingPet = ref(false);
+        const isDraggingChat = ref(false);
         let dragStartX = 0;
         let dragStartY = 0;
         let dragStartPetX = 0;
@@ -239,7 +241,7 @@ export default {
             // Don't drag if clicking on buttons
             if (e.target.closest("button")) return;
 
-            isDraggingPet = true;
+            isDraggingPet.value = true;
             dragStartX = e.clientX;
             dragStartY = e.clientY;
             dragStartPetX = petPosition.value.x;
@@ -250,7 +252,7 @@ export default {
         };
 
         const onDragPet = (e) => {
-            if (!isDraggingPet) return;
+            if (!isDraggingPet.value) return;
 
             const deltaX = e.clientX - dragStartX;
             const deltaY = e.clientY - dragStartY;
@@ -266,14 +268,14 @@ export default {
         };
 
         const stopDragPet = () => {
-            isDraggingPet = false;
+            isDraggingPet.value = false;
             document.removeEventListener("mousemove", onDragPet);
             document.removeEventListener("mouseup", stopDragPet);
         };
 
         // Dragging functions for chat
         const startDragChat = (e) => {
-            isDraggingChat = true;
+            isDraggingChat.value = true;
             dragStartX = e.clientX;
             dragStartY = e.clientY;
             dragStartChatX = chatPosition.value.x;
@@ -284,7 +286,7 @@ export default {
         };
 
         const onDragChat = (e) => {
-            if (!isDraggingChat) return;
+            if (!isDraggingChat.value) return;
 
             const deltaX = e.clientX - dragStartX;
             const deltaY = e.clientY - dragStartY;
@@ -300,7 +302,7 @@ export default {
         };
 
         const stopDragChat = () => {
-            isDraggingChat = false;
+            isDraggingChat.value = false;
             document.removeEventListener("mousemove", onDragChat);
             document.removeEventListener("mouseup", stopDragChat);
         };
@@ -326,6 +328,8 @@ export default {
             handleMinimize,
             startDragPet,
             startDragChat,
+            isDraggingPet,
+            isDraggingChat,
         };
     },
 };
@@ -354,6 +358,10 @@ export default {
     user-select: none;
     pointer-events: auto;
     transition: transform 0.1s ease-out;
+}
+
+.pet-container.dragging {
+    transition: none;
 }
 
 .pet-container:active {
@@ -477,6 +485,10 @@ export default {
     overflow: hidden;
     border: 2px solid rgba(102, 126, 234, 0.2);
     z-index: 999;
+}
+
+.chat-bubble.dragging {
+    transition: none;
 }
 
 .chat-bubble::before {

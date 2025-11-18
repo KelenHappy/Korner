@@ -2,20 +2,105 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"io/ioutil"
 	"log"
+	"os"
+	"path/filepath"
 	"runtime"
+
+	"fmt"
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
 type App struct {
-	ctx context.Context
+	ctx      context.Context
+	settings *AppSettings
+}
+
+// AppSettings stores user configuration
+type AppSettings struct {
+	APIProvider  string `json:"apiProvider"` // "openai", "anthropic", "gemini", "custom"
+	APIKey       string `json:"apiKey"`
+	APIEndpoint  string `json:"apiEndpoint"`
+	FloatingIcon string `json:"floatingIcon"`
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
-	return &App{}
+	app := &App{
+		settings: &AppSettings{
+			APIProvider:  "openai",
+			APIKey:       "",
+			APIEndpoint:  "",
+			FloatingIcon: "🌸",
+		},
+	}
+	// Load settings from file
+	app.loadSettings()
+	return app
+}
+
+// getSettingsPath returns the path to the settings file
+func (a *App) getSettingsPath() string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Printf("Failed to get home directory: %v", err)
+		return "korner-settings.json"
+	}
+	return filepath.Join(homeDir, ".korner-settings.json")
+}
+
+// loadSettings loads settings from file
+func (a *App) loadSettings() {
+	settingsPath := a.getSettingsPath()
+	data, err := ioutil.ReadFile(settingsPath)
+	if err != nil {
+		log.Printf("Could not read settings file (will use defaults): %v", err)
+		return
+	}
+
+	var settings AppSettings
+	if err := json.Unmarshal(data, &settings); err != nil {
+		log.Printf("Could not parse settings file: %v", err)
+		return
+	}
+
+	a.settings = &settings
+	log.Printf("Loaded settings: provider=%s", a.settings.APIProvider)
+}
+
+// SaveSettings saves settings to file
+func (a *App) SaveSettings(settings AppSettings) error {
+	a.settings = &settings
+
+	settingsPath := a.getSettingsPath()
+	data, err := json.MarshalIndent(settings, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	if err := ioutil.WriteFile(settingsPath, data, 0600); err != nil {
+		return err
+	}
+
+	log.Printf("Saved settings: provider=%s", a.settings.APIProvider)
+	return nil
+}
+
+// GetSettings returns current settings
+func (a *App) GetSettings() AppSettings {
+	if a.settings == nil {
+		return AppSettings{
+			APIProvider:  "openai",
+			APIKey:       "",
+			APIEndpoint:  "",
+			FloatingIcon: "🌸",
+		}
+	}
+	return *a.settings
 }
 
 // startup is called when the app starts. The context is saved
@@ -28,10 +113,10 @@ func (a *App) startup(ctx context.Context) {
 func (a *App) domReady(ctx context.Context) {
 	// Log DPI scale for diagnostics
 	logDPIInfo()
-	
+
 	// Initialize system tray
 	go a.InitSystemTray()
-	
+
 	// Register global hotkey (Ctrl+Alt+Q)
 	go func() {
 		err := a.RegisterGlobalHotkey()
@@ -114,13 +199,61 @@ func (a *App) CaptureScreenshot(x, y, width, height int) (string, error) {
 	return captureScreenshot(ctx, screenX, screenY, width, height)
 }
 
-// QueryLLM sends a query with screenshot to AMD GPT OSS 120B model
+// QueryLLM sends a query with screenshot to the configured LLM provider
 func (a *App) QueryLLM(query string, screenshotBase64 string) (string, error) {
 	ctx := a.ctx
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	return AMDQueryLLM(ctx, query, screenshotBase64)
+
+	log.Printf("[QueryLLM] Starting query with provider: %s", a.settings.APIProvider)
+	log.Printf("[QueryLLM] Query length: %d, Screenshot length: %d", len(query), len(screenshotBase64))
+
+	if a.settings == nil {
+		log.Printf("[QueryLLM] ERROR: settings is nil")
+		return "", fmt.Errorf("Settings not initialized. Please configure your API settings.")
+	}
+
+	if a.settings.APIKey == "" {
+		log.Printf("[QueryLLM] ERROR: API key is empty for provider: %s", a.settings.APIProvider)
+		return "", fmt.Errorf("API key not configured. Please set your API key in Settings.")
+	}
+
+	log.Printf("[QueryLLM] API Key present: %d characters", len(a.settings.APIKey))
+
+	// Route to appropriate provider
+	var result string
+	var err error
+
+	switch a.settings.APIProvider {
+	case "openai":
+		log.Printf("[QueryLLM] Calling OpenAI API...")
+		result, err = QueryOpenAI(ctx, query, screenshotBase64, a.settings.APIKey, "gpt-4-vision-preview")
+	case "anthropic":
+		log.Printf("[QueryLLM] Calling Anthropic API...")
+		result, err = QueryAnthropic(ctx, query, screenshotBase64, a.settings.APIKey)
+	case "gemini":
+		log.Printf("[QueryLLM] Calling Gemini API...")
+		result, err = QueryGemini(ctx, query, screenshotBase64, a.settings.APIKey)
+	case "custom":
+		if a.settings.APIEndpoint == "" {
+			log.Printf("[QueryLLM] ERROR: Custom endpoint is empty")
+			return "", fmt.Errorf("custom API endpoint not configured")
+		}
+		log.Printf("[QueryLLM] Calling custom endpoint: %s", a.settings.APIEndpoint)
+		result, err = QueryCustom(ctx, query, screenshotBase64, a.settings.APIKey, a.settings.APIEndpoint)
+	default:
+		log.Printf("[QueryLLM] ERROR: Unsupported provider: %s", a.settings.APIProvider)
+		return "", fmt.Errorf("unsupported API provider: %s", a.settings.APIProvider)
+	}
+
+	if err != nil {
+		log.Printf("[QueryLLM] ERROR from provider: %v", err)
+		return "", err
+	}
+
+	log.Printf("[QueryLLM] Success! Response length: %d", len(result))
+	return result, nil
 }
 
 // OpenDevTools opens the developer tools window

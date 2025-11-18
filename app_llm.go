@@ -6,66 +6,49 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 )
 
-// This file provides an implementation for calling an OpenAI-compatible AMD endpoint
-// to perform Vision-enabled chat completions. It does NOT override the existing
-// App.QueryLLM method in app.go to avoid duplicate symbol errors. Instead, it exposes
-// helper functions that app.go can call.
-//
-// Typical usage (inside your existing App.QueryLLM in app.go):
-//
-//   func (a *App) QueryLLM(query string, screenshotBase64 string) (string, error) {
-//       // Prefer the context captured at startup if available; otherwise, use background.
-//       ctx := a.ctx
-//       if ctx == nil {
-//           ctx = context.Background()
-//       }
-//       return AMDQueryLLM(ctx, query, screenshotBase64)
-//   }
-//
-// Environment variables used:
-// - AMD_LLM_ENDPOINT (required): OpenAI-compatible endpoint URL, e.g. https://your-amd-endpoint/v1/chat/completions
-// - AMD_API_KEY     (required): API key for the AMD endpoint
-// - MODEL_NAME      (optional): Model name; defaults to "gpt-oss-120b" if not set
-//
-// The request conforms to OpenAI Chat Completions schema with Vision content:
-// messages: [
-//   { "role": "user", "content": [
-//       { "type": "text", "text": "<your text>" },
-//       { "type": "image_url", "image_url": { "url": "data:image/png;base64,..." } }
-//   ]}
-// ]
-
-// AMDQueryLLM invokes the AMD OpenAI-compatible endpoint using the provided query
-// and an optional screenshot as a base64-encoded PNG (without or with data URL prefix).
-// Returns the assistant message content from the first choice.
-func AMDQueryLLM(ctx context.Context, query string, screenshotBase64 string) (string, error) {
-	endpoint := strings.TrimSpace(os.Getenv("AMD_LLM_ENDPOINT"))
-	apiKey := strings.TrimSpace(os.Getenv("AMD_API_KEY"))
-	model := strings.TrimSpace(os.Getenv("MODEL_NAME"))
+// QueryOpenAI calls OpenAI's GPT-4 Vision API
+func QueryOpenAI(ctx context.Context, query string, screenshotBase64 string, apiKey string, model string) (string, error) {
 	if model == "" {
-		model = "gpt-oss-120b"
-	}
-	if endpoint == "" {
-		return "", errors.New("missing AMD_LLM_ENDPOINT environment variable")
-	}
-	if apiKey == "" {
-		return "", errors.New("missing AMD_API_KEY environment variable")
+		model = "gpt-4-vision-preview"
 	}
 
-	reqPayload := openAIChatRequest{
+	endpoint := "https://api.openai.com/v1/chat/completions"
+
+	messages := []openAIMessage{
+		{
+			Role: "user",
+			Content: []openAIContent{
+				{
+					Type: "text",
+					Text: query,
+				},
+			},
+		},
+	}
+
+	// Add image if provided
+	if screenshotBase64 != "" {
+		imageURL := normalizeDataURL(screenshotBase64)
+		messages[0].Content = append(messages[0].Content, openAIContent{
+			Type: "image_url",
+			ImageURL: &openAIImageURL{
+				URL: imageURL,
+			},
+		})
+	}
+
+	reqPayload := openAIRequest{
 		Model:       model,
-		Messages:    buildVisionMessages(query, screenshotBase64),
-		Temperature: 0.2,
-		// You may tune these fields based on latency/quality tradeoffs:
-		// MaxTokens:   1024,
-		// TopP:        1.0,
-		// Stream:      false,
+		Messages:    messages,
+		MaxTokens:   1024,
+		Temperature: 0.7,
 	}
 
 	body, err := json.Marshal(reqPayload)
@@ -73,11 +56,7 @@ func AMDQueryLLM(ctx context.Context, query string, screenshotBase64 string) (st
 		return "", fmt.Errorf("marshal request: %w", err)
 	}
 
-	// Use per-request timeout; if ctx already has a deadline, rely on it.
-	httpClient := &http.Client{
-		Timeout: 60 * time.Second,
-	}
-
+	httpClient := &http.Client{Timeout: 60 * time.Second}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return "", fmt.Errorf("create request: %w", err)
@@ -85,64 +64,289 @@ func AMDQueryLLM(ctx context.Context, query string, screenshotBase64 string) (st
 
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("http do: %w", err)
+		return "", fmt.Errorf("http request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
-	var parsed openAIChatResponse
-	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("API error (%d): %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var result openAIResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return "", fmt.Errorf("decode response: %w", err)
 	}
 
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		if parsed.Error != nil && parsed.Error.Message != "" {
-			return "", fmt.Errorf("llm error (%d): %s", resp.StatusCode, parsed.Error.Message)
-		}
-		return "", fmt.Errorf("llm error status: %d", resp.StatusCode)
+	if len(result.Choices) == 0 {
+		return "", errors.New("no response from API")
 	}
 
-	if len(parsed.Choices) == 0 {
-		return "", errors.New("no choices returned from LLM")
-	}
-
-	return strings.TrimSpace(parsed.Choices[0].Message.Content), nil
+	return strings.TrimSpace(result.Choices[0].Message.Content), nil
 }
 
-// buildVisionMessages constructs a single user message with text and optional image content.
-func buildVisionMessages(query string, screenshotBase64 string) []oaMessage {
-	parts := []oaContentPart{
+// QueryAnthropic calls Anthropic's Claude API
+func QueryAnthropic(ctx context.Context, query string, screenshotBase64 string, apiKey string) (string, error) {
+	endpoint := "https://api.anthropic.com/v1/messages"
+
+	content := []anthropicContent{
 		{
 			Type: "text",
-			Text: strings.TrimSpace(query),
+			Text: query,
 		},
 	}
 
-	imgDataURL := normalizeDataURL(screenshotBase64)
-	if imgDataURL != "" {
-		parts = append(parts, oaContentPart{
-			Type: "image_url",
-			ImageURL: &oaImageURL{
-				URL:    imgDataURL,
-				Detail: "auto",
+	// Add image if provided
+	if screenshotBase64 != "" {
+		// Remove data URL prefix if present
+		base64Data := screenshotBase64
+		if strings.Contains(base64Data, ",") {
+			parts := strings.Split(base64Data, ",")
+			if len(parts) > 1 {
+				base64Data = parts[1]
+			}
+		}
+
+		content = append(content, anthropicContent{
+			Type: "image",
+			Source: &anthropicImageSource{
+				Type:      "base64",
+				MediaType: "image/png",
+				Data:      base64Data,
 			},
 		})
 	}
 
-	return []oaMessage{
-		{
-			Role:    "user",
-			Content: parts,
+	reqPayload := anthropicRequest{
+		Model:     "claude-3-5-sonnet-20241022",
+		MaxTokens: 1024,
+		Messages: []anthropicMessage{
+			{
+				Role:    "user",
+				Content: content,
+			},
 		},
 	}
+
+	body, err := json.Marshal(reqPayload)
+	if err != nil {
+		return "", fmt.Errorf("marshal request: %w", err)
+	}
+
+	httpClient := &http.Client{Timeout: 60 * time.Second}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("create request: %w", err)
+	}
+
+	req.Header.Set("x-api-key", apiKey)
+	req.Header.Set("anthropic-version", "2023-06-01")
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("http request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("API error (%d): %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var result anthropicResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("decode response: %w", err)
+	}
+
+	if len(result.Content) == 0 {
+		return "", errors.New("no response from API")
+	}
+
+	return strings.TrimSpace(result.Content[0].Text), nil
 }
 
-// normalizeDataURL ensures the screenshot is a valid data URL. If the input is empty,
-// returns empty string. If already a "data:" URL, returns as-is. Otherwise, prefixes
-// "data:image/png;base64,".
+// QueryGemini calls Google's Gemini API
+func QueryGemini(ctx context.Context, query string, screenshotBase64 string, apiKey string) (string, error) {
+	model := "gemini-2.0-flash-lite"
+	endpoint := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s", model, apiKey)
+
+	log.Printf("[Gemini] Using model: %s", model)
+	log.Printf("[Gemini] Has screenshot: %v", screenshotBase64 != "")
+
+	parts := []geminiPart{
+		{
+			Text: query,
+		},
+	}
+
+	// Add image if provided
+	if screenshotBase64 != "" {
+		// Remove data URL prefix if present
+		base64Data := screenshotBase64
+		if strings.Contains(base64Data, ",") {
+			splitParts := strings.Split(base64Data, ",")
+			if len(splitParts) > 1 {
+				base64Data = splitParts[1]
+			}
+		}
+
+		log.Printf("[Gemini] Adding image data, length: %d", len(base64Data))
+		parts = append(parts, geminiPart{
+			InlineData: &geminiInlineData{
+				MimeType: "image/png",
+				Data:     base64Data,
+			},
+		})
+	}
+
+	reqPayload := geminiRequest{
+		Contents: []geminiContent{
+			{
+				Parts: parts,
+			},
+		},
+		GenerationConfig: &geminiGenerationConfig{
+			Temperature:     0.7,
+			MaxOutputTokens: 1024,
+		},
+	}
+
+	body, err := json.Marshal(reqPayload)
+	if err != nil {
+		log.Printf("[Gemini] ERROR marshaling request: %v", err)
+		return "", fmt.Errorf("marshal request: %w", err)
+	}
+
+	log.Printf("[Gemini] Request body length: %d", len(body))
+
+	httpClient := &http.Client{Timeout: 60 * time.Second}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		log.Printf("[Gemini] ERROR creating request: %v", err)
+		return "", fmt.Errorf("create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	log.Printf("[Gemini] Sending request to API...")
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		log.Printf("[Gemini] ERROR sending request: %v", err)
+		return "", fmt.Errorf("http request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	log.Printf("[Gemini] Response status: %d", resp.StatusCode)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		log.Printf("[Gemini] ERROR response body: %s", string(bodyBytes))
+		return "", fmt.Errorf("API error (%d): %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("[Gemini] ERROR reading response body: %v", err)
+		return "", fmt.Errorf("read response: %w", err)
+	}
+
+	log.Printf("[Gemini] Response body: %s", string(bodyBytes))
+
+	var result geminiResponse
+	if err := json.Unmarshal(bodyBytes, &result); err != nil {
+		log.Printf("[Gemini] ERROR decoding response: %v", err)
+		return "", fmt.Errorf("decode response: %w", err)
+	}
+
+	log.Printf("[Gemini] Candidates count: %d", len(result.Candidates))
+	if len(result.Candidates) > 0 {
+		log.Printf("[Gemini] Parts count: %d", len(result.Candidates[0].Content.Parts))
+	}
+
+	if len(result.Candidates) == 0 || len(result.Candidates[0].Content.Parts) == 0 {
+		log.Printf("[Gemini] ERROR: no response content in API response")
+		return "", errors.New("no response from API")
+	}
+
+	responseText := strings.TrimSpace(result.Candidates[0].Content.Parts[0].Text)
+	log.Printf("[Gemini] Response text length: %d", len(responseText))
+	return responseText, nil
+}
+
+// QueryCustom calls a custom OpenAI-compatible endpoint
+func QueryCustom(ctx context.Context, query string, screenshotBase64 string, apiKey string, endpoint string) (string, error) {
+	messages := []openAIMessage{
+		{
+			Role: "user",
+			Content: []openAIContent{
+				{
+					Type: "text",
+					Text: query,
+				},
+			},
+		},
+	}
+
+	// Add image if provided
+	if screenshotBase64 != "" {
+		imageURL := normalizeDataURL(screenshotBase64)
+		messages[0].Content = append(messages[0].Content, openAIContent{
+			Type: "image_url",
+			ImageURL: &openAIImageURL{
+				URL: imageURL,
+			},
+		})
+	}
+
+	reqPayload := openAIRequest{
+		Model:       "gpt-4-vision-preview",
+		Messages:    messages,
+		MaxTokens:   1024,
+		Temperature: 0.7,
+	}
+
+	body, err := json.Marshal(reqPayload)
+	if err != nil {
+		return "", fmt.Errorf("marshal request: %w", err)
+	}
+
+	httpClient := &http.Client{Timeout: 60 * time.Second}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("http request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("API error (%d): %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var result openAIResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("decode response: %w", err)
+	}
+
+	if len(result.Choices) == 0 {
+		return "", errors.New("no response from API")
+	}
+
+	return strings.TrimSpace(result.Choices[0].Message.Content), nil
+}
+
+// normalizeDataURL ensures the screenshot is a valid data URL
 func normalizeDataURL(b64 string) string {
 	b64 = strings.TrimSpace(b64)
 	if b64 == "" {
@@ -151,77 +355,106 @@ func normalizeDataURL(b64 string) string {
 	if strings.HasPrefix(b64, "data:") {
 		return b64
 	}
-	// Assume PNG; adjust if you support other formats.
 	return "data:image/png;base64," + b64
 }
 
-/***************
- OpenAI-compatible request/response schema
-***************/
-
-type openAIChatRequest struct {
-	Model       string      `json:"model"`
-	Messages    []oaMessage `json:"messages"`
-	MaxTokens   int         `json:"max_tokens,omitempty"`
-	Temperature float64     `json:"temperature,omitempty"`
-	TopP        float64     `json:"top_p,omitempty"`
-	Stream      bool        `json:"stream,omitempty"`
-	Stop        []string    `json:"stop,omitempty"`
-	Frequency   float64     `json:"frequency_penalty,omitempty"`
-	Presence    float64     `json:"presence_penalty,omitempty"`
-	Tools       interface{} `json:"tools,omitempty"`
-	ToolChoice  interface{} `json:"tool_choice,omitempty"`
-	LogitBias   interface{} `json:"logit_bias,omitempty"`
-	User        string      `json:"user,omitempty"`
-	ResponseFmt interface{} `json:"response_format,omitempty"`
+// OpenAI API structures
+type openAIRequest struct {
+	Model       string          `json:"model"`
+	Messages    []openAIMessage `json:"messages"`
+	MaxTokens   int             `json:"max_tokens,omitempty"`
+	Temperature float64         `json:"temperature,omitempty"`
 }
 
-type oaMessage struct {
-	Role    string          `json:"role"` // "system" | "user" | "assistant"
-	Content []oaContentPart `json:"content"`
+type openAIMessage struct {
+	Role    string          `json:"role"`
+	Content []openAIContent `json:"content"`
 }
 
-type oaContentPart struct {
-	Type     string      `json:"type"` // "text" | "image_url"
-	Text     string      `json:"text,omitempty"`
-	ImageURL *oaImageURL `json:"image_url,omitempty"`
+type openAIContent struct {
+	Type     string          `json:"type"`
+	Text     string          `json:"text,omitempty"`
+	ImageURL *openAIImageURL `json:"image_url,omitempty"`
 }
 
-type oaImageURL struct {
-	URL    string `json:"url"`
-	Detail string `json:"detail,omitempty"` // "low" | "high" | "auto"
+type openAIImageURL struct {
+	URL string `json:"url"`
 }
 
-type openAIChatResponse struct {
-	ID      string             `json:"id"`
-	Object  string             `json:"object"`
-	Created int64              `json:"created"`
-	Model   string             `json:"model"`
-	Choices []openAIChatChoice `json:"choices"`
-	Usage   *openAIUsage       `json:"usage,omitempty"`
-	Error   *openAIError       `json:"error,omitempty"`
+type openAIResponse struct {
+	Choices []openAIChoice `json:"choices"`
 }
 
-type openAIChatChoice struct {
-	Index        int         `json:"index"`
-	Message      oaChoiceMsg `json:"message"`
-	FinishReason string      `json:"finish_reason"`
+type openAIChoice struct {
+	Message openAIMessageResponse `json:"message"`
 }
 
-type oaChoiceMsg struct {
-	Role    string `json:"role"`
+type openAIMessageResponse struct {
 	Content string `json:"content"`
 }
 
-type openAIUsage struct {
-	PromptTokens     int `json:"prompt_tokens"`
-	CompletionTokens int `json:"completion_tokens"`
-	TotalTokens      int `json:"total_tokens"`
+// Anthropic API structures
+type anthropicRequest struct {
+	Model     string             `json:"model"`
+	MaxTokens int                `json:"max_tokens"`
+	Messages  []anthropicMessage `json:"messages"`
 }
 
-type openAIError struct {
-	Message string `json:"message"`
-	Type    string `json:"type,omitempty"`
-	Param   string `json:"param,omitempty"`
-	Code    string `json:"code,omitempty"`
+type anthropicMessage struct {
+	Role    string             `json:"role"`
+	Content []anthropicContent `json:"content"`
+}
+
+type anthropicContent struct {
+	Type   string                `json:"type"`
+	Text   string                `json:"text,omitempty"`
+	Source *anthropicImageSource `json:"source,omitempty"`
+}
+
+type anthropicImageSource struct {
+	Type      string `json:"type"`
+	MediaType string `json:"media_type"`
+	Data      string `json:"data"`
+}
+
+type anthropicResponse struct {
+	Content []anthropicContentResponse `json:"content"`
+}
+
+type anthropicContentResponse struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
+}
+
+// Gemini API structures
+type geminiRequest struct {
+	Contents         []geminiContent         `json:"contents"`
+	GenerationConfig *geminiGenerationConfig `json:"generationConfig,omitempty"`
+}
+
+type geminiContent struct {
+	Parts []geminiPart `json:"parts"`
+}
+
+type geminiPart struct {
+	Text       string            `json:"text,omitempty"`
+	InlineData *geminiInlineData `json:"inline_data,omitempty"`
+}
+
+type geminiInlineData struct {
+	MimeType string `json:"mime_type"`
+	Data     string `json:"data"`
+}
+
+type geminiGenerationConfig struct {
+	Temperature     float64 `json:"temperature,omitempty"`
+	MaxOutputTokens int     `json:"maxOutputTokens,omitempty"`
+}
+
+type geminiResponse struct {
+	Candidates []geminiCandidate `json:"candidates"`
+}
+
+type geminiCandidate struct {
+	Content geminiContent `json:"content"`
 }

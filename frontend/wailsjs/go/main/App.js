@@ -18,6 +18,10 @@ export function GetScreenSize() {
   return window['go']['main']['App']['GetScreenSize']();
 }
 
+export function GetSettings() {
+  return window['go']['main']['App']['GetSettings']();
+}
+
 export function GetWindowPosition() {
   return window['go']['main']['App']['GetWindowPosition']();
 }
@@ -44,6 +48,10 @@ export function QueryLLM(arg1, arg2) {
 
 export function RegisterGlobalHotkey() {
   return window['go']['main']['App']['RegisterGlobalHotkey']();
+}
+
+export function SaveSettings(arg1) {
+  return window['go']['main']['App']['SaveSettings'](arg1);
 }
 
 export function SetWindowPosition(arg1, arg2) {

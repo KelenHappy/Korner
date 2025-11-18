@@ -3,10 +3,50 @@
         <div class="query-modal">
             <!-- Header -->
             <div class="modal-header">
-                <h2 class="modal-title">💭 Ask about this screenshot</h2>
-                <button @click="cancel" class="close-btn" title="Close">
-                    ✕
-                </button>
+                <div class="header-content">
+                    <div class="icon-wrapper">
+                        <span class="header-icon">✨</span>
+                    </div>
+                    <h2 class="modal-title">AI Chat</h2>
+                </div>
+                <div class="header-actions">
+                    <button
+                        v-if="messages.length > 0"
+                        @click="clearChat"
+                        class="clear-btn"
+                        title="Clear chat"
+                    >
+                        <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 18 18"
+                            fill="none"
+                        >
+                            <path
+                                d="M3 5H15M7 8V13M11 8V13M4 5L5 15C5 15.5304 5.21071 16.0391 5.58579 16.4142C5.96086 16.7893 6.46957 17 7 17H11C11.5304 17 12.0391 16.7893 12.4142 16.4142C12.7893 16.0391 13 15.5304 13 15L14 5M6 5V3C6 2.73478 6.10536 2.48043 6.29289 2.29289C6.48043 2.10536 6.73478 2 7 2H11C11.2652 2 11.5196 2.10536 11.7071 2.29289C11.8946 2.48043 12 2.73478 12 3V5"
+                                stroke="currentColor"
+                                stroke-width="1.5"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+                        </svg>
+                    </button>
+                    <button @click="cancel" class="close-btn" title="Close">
+                        <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 20 20"
+                            fill="none"
+                        >
+                            <path
+                                d="M15 5L5 15M5 5L15 15"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                            />
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             <!-- Body with two-column layout -->
@@ -14,77 +54,152 @@
                 <!-- Left: Screenshot Preview -->
                 <div class="screenshot-column">
                     <div v-if="hasScreenshot" class="screenshot-wrapper">
-                        <img
-                            :src="screenshotPreview"
-                            alt="Screenshot"
-                            class="screenshot-img"
-                        />
+                        <div class="screenshot-frame">
+                            <img
+                                :src="screenshotPreview"
+                                alt="Screenshot"
+                                class="screenshot-img"
+                            />
+                        </div>
                     </div>
                     <div v-else class="screenshot-placeholder">
-                        <p>📷</p>
-                        <p>Screenshot unavailable</p>
+                        <div class="placeholder-icon">
+                            <svg
+                                width="64"
+                                height="64"
+                                viewBox="0 0 64 64"
+                                fill="none"
+                            >
+                                <rect
+                                    x="8"
+                                    y="12"
+                                    width="48"
+                                    height="40"
+                                    rx="4"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                />
+                                <circle
+                                    cx="32"
+                                    cy="28"
+                                    r="6"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                />
+                                <path
+                                    d="M8 44L18 34L28 44L42 30L56 44V48C56 50.2091 54.2091 52 52 52H12C9.79086 52 8 50.2091 8 48V44Z"
+                                    fill="currentColor"
+                                    opacity="0.2"
+                                />
+                            </svg>
+                        </div>
+                        <p class="placeholder-text">No screenshot available</p>
                     </div>
                 </div>
 
-                <!-- Right: Query Input -->
-                <div class="input-column">
-                    <div class="input-section">
-                        <label class="input-label">Your Question</label>
+                <!-- Right: Chat Area -->
+                <div class="chat-column">
+                    <!-- Messages -->
+                    <div class="messages-container" ref="messagesContainer">
+                        <div v-if="messages.length === 0" class="empty-state">
+                            <div class="empty-icon">💭</div>
+                            <p class="empty-text">
+                                Start a conversation about this screenshot
+                            </p>
+                            <div class="prompts-grid">
+                                <button
+                                    v-for="prompt in quickPrompts"
+                                    :key="prompt"
+                                    @click="queryText = prompt"
+                                    class="prompt-btn"
+                                >
+                                    <span class="prompt-text">{{
+                                        prompt
+                                    }}</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div
+                            v-for="(message, index) in messages"
+                            :key="index"
+                            :class="[
+                                'message',
+                                message.role === 'user'
+                                    ? 'message-user'
+                                    : 'message-ai',
+                            ]"
+                        >
+                            <div class="message-avatar">
+                                <span v-if="message.role === 'user'">👤</span>
+                                <span v-else>✨</span>
+                            </div>
+                            <div class="message-content">
+                                <div class="message-text">
+                                    {{ message.content }}
+                                </div>
+                                <div class="message-time">
+                                    {{ formatTime(message.timestamp) }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="isLoading" class="message message-ai">
+                            <div class="message-avatar">
+                                <span>✨</span>
+                            </div>
+                            <div class="message-content">
+                                <div class="loading-dots">
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Input Area -->
+                    <div class="input-area">
                         <textarea
                             v-model="queryText"
                             @keydown.ctrl.enter="submit"
                             @keydown.meta.enter="submit"
-                            class="query-textarea"
-                            rows="8"
-                            placeholder="Ask anything about this screenshot..."
-                            autofocus
+                            class="chat-input"
+                            rows="3"
+                            placeholder="Type your message..."
+                            :disabled="isLoading"
                         ></textarea>
-                        <div class="input-info">
+                        <div class="input-actions">
                             <span class="char-count"
                                 >{{ queryText.length }} / 1000</span
                             >
-                            <span class="shortcut-hint">
-                                <kbd class="kbd">{{ submitKey }}</kbd>
-                                to submit
-                            </span>
-                        </div>
-                    </div>
-
-                    <!-- Quick Prompts -->
-                    <div class="prompts-section">
-                        <p class="prompts-label">Quick suggestions:</p>
-                        <div class="prompts-grid">
                             <button
-                                v-for="prompt in quickPrompts"
-                                :key="prompt"
-                                @click="queryText = prompt"
-                                class="prompt-btn"
+                                @click="submit"
+                                :disabled="!queryText.trim() || isLoading"
+                                class="send-btn"
                             >
-                                {{ prompt }}
+                                <svg
+                                    width="20"
+                                    height="20"
+                                    viewBox="0 0 20 20"
+                                    fill="none"
+                                >
+                                    <path
+                                        d="M2 10L18 2L10 18L8 11L2 10Z"
+                                        fill="currentColor"
+                                    />
+                                </svg>
                             </button>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- Footer Actions -->
-            <div class="modal-footer">
-                <button @click="cancel" class="btn-cancel">Cancel</button>
-                <button
-                    @click="submit"
-                    :disabled="!queryText.trim()"
-                    class="btn-submit"
-                >
-                    <span class="btn-icon">✨</span>
-                    <span class="btn-text">Ask AI</span>
-                </button>
             </div>
         </div>
     </div>
 </template>
 
 <script>
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, watch, onMounted, nextTick } from "vue";
 
 export default {
     name: "QueryWindow",
@@ -97,6 +212,9 @@ export default {
     emits: ["submit", "cancel"],
     setup(props, { emit }) {
         const queryText = ref("");
+        const messages = ref([]);
+        const isLoading = ref(false);
+        const messagesContainer = ref(null);
 
         const quickPrompts = [
             "Explain this",
@@ -150,24 +268,70 @@ export default {
             return isMac.value ? "⌘ + Enter" : "Ctrl + Enter";
         });
 
-        const submit = () => {
-            const trimmed = queryText.value.trim();
-            if (trimmed) {
-                emit("submit", trimmed.slice(0, 1000));
-                queryText.value = "";
+        const scrollToBottom = async () => {
+            await nextTick();
+            if (messagesContainer.value) {
+                messagesContainer.value.scrollTop =
+                    messagesContainer.value.scrollHeight;
             }
+        };
+
+        const submit = async () => {
+            const trimmed = queryText.value.trim();
+            if (!trimmed || isLoading.value) return;
+
+            // Add user message
+            messages.value.push({
+                role: "user",
+                content: trimmed.slice(0, 1000),
+                timestamp: new Date(),
+            });
+
+            queryText.value = "";
+            isLoading.value = true;
+            scrollToBottom();
+
+            // Emit for backend processing
+            emit("submit", trimmed.slice(0, 1000), (response) => {
+                // Add AI response
+                messages.value.push({
+                    role: "assistant",
+                    content: response,
+                    timestamp: new Date(),
+                });
+                isLoading.value = false;
+                scrollToBottom();
+            });
         };
 
         const cancel = () => {
             emit("cancel");
         };
 
+        const clearChat = () => {
+            if (confirm("Are you sure you want to clear the chat history?")) {
+                messages.value = [];
+            }
+        };
+
+        const formatTime = (date) => {
+            return date.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+            });
+        };
+
         return {
             queryText,
+            messages,
+            isLoading,
+            messagesContainer,
             quickPrompts,
             submitKey,
             submit,
             cancel,
+            clearChat,
+            formatTime,
             hasScreenshot,
             screenshotPreview,
         };
@@ -189,29 +353,34 @@ export default {
 @keyframes fadeIn {
     from {
         opacity: 0;
+        backdrop-filter: blur(0px);
     }
     to {
         opacity: 1;
+        backdrop-filter: blur(8px);
     }
 }
 
 .query-modal {
-    background: white;
-    border-radius: 20px;
-    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+    background: linear-gradient(to bottom, #ffffff, #fefefe);
+    border-radius: 24px;
+    box-shadow:
+        0 0 0 1px rgba(0, 0, 0, 0.05),
+        0 10px 60px rgba(0, 0, 0, 0.15),
+        0 30px 100px rgba(102, 126, 234, 0.2);
     width: 1200px;
     max-width: 90vw;
     max-height: 85vh;
     display: flex;
     flex-direction: column;
-    animation: slideUp 0.3s ease-out;
+    animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     overflow: hidden;
 }
 
 @keyframes slideUp {
     from {
         opacity: 0;
-        transform: translateY(40px) scale(0.95);
+        transform: translateY(50px) scale(0.96);
     }
     to {
         opacity: 1;
@@ -225,37 +394,90 @@ export default {
     align-items: center;
     justify-content: space-between;
     padding: 24px 32px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-bottom: none;
+    background: linear-gradient(
+        135deg,
+        rgba(102, 126, 234, 0.05) 0%,
+        rgba(118, 75, 162, 0.05) 100%
+    );
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
     flex-shrink: 0;
 }
 
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.clear-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    color: #64748b;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+
+.clear-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.icon-wrapper {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+}
+
+.header-icon {
+    font-size: 24px;
+    filter: brightness(1.2);
+}
+
 .modal-title {
-    font-size: 20px;
-    font-weight: 700;
-    color: white;
+    font-size: 22px;
+    font-weight: 600;
+    color: #1a1a1a;
     margin: 0;
+    letter-spacing: -0.02em;
 }
 
 .close-btn {
     width: 36px;
     height: 36px;
     border: none;
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
+    background: transparent;
+    color: #64748b;
     border-radius: 10px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 22px;
     transition: all 0.2s ease;
     padding: 0;
 }
 
 .close-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: scale(1.05);
+    background: rgba(100, 116, 139, 0.1);
+    color: #1a1a1a;
+    transform: rotate(90deg);
 }
 
 /* Body - Two Column Layout */
@@ -275,8 +497,13 @@ export default {
     align-items: center;
     justify-content: center;
     overflow: auto;
-    border-radius: 12px;
-    background: rgba(102, 126, 234, 0.03);
+    border-radius: 16px;
+    background: linear-gradient(
+        135deg,
+        rgba(102, 126, 234, 0.03) 0%,
+        rgba(118, 75, 162, 0.03) 100%
+    );
+    padding: 24px;
 }
 
 .screenshot-wrapper {
@@ -285,7 +512,22 @@ export default {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 16px;
+}
+
+.screenshot-frame {
+    position: relative;
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 12px;
+    padding: 8px;
+    background: linear-gradient(
+        135deg,
+        rgba(102, 126, 234, 0.1) 0%,
+        rgba(118, 75, 162, 0.1) 100%
+    );
+    box-shadow:
+        0 0 0 1px rgba(102, 126, 234, 0.1),
+        0 8px 32px rgba(0, 0, 0, 0.08);
 }
 
 .screenshot-img {
@@ -295,8 +537,8 @@ export default {
     height: auto;
     object-fit: contain;
     border-radius: 8px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     background: white;
+    display: block;
 }
 
 .screenshot-placeholder {
@@ -304,112 +546,250 @@ export default {
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 16px;
     color: #9ca3af;
-    gap: 8px;
 }
 
-.screenshot-placeholder p {
+.placeholder-icon {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #cbd5e1;
+}
+
+.placeholder-text {
     margin: 0;
-    font-size: 14px;
-}
-
-.screenshot-placeholder p:first-child {
-    font-size: 48px;
-}
-
-/* Right Column: Input */
-.input-column {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    overflow-y: auto;
-}
-
-.input-section {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.input-label {
-    font-size: 13px;
-    font-weight: 700;
-    color: #4b5563;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-}
-
-.query-textarea {
-    width: 100%;
-    padding: 14px;
-    border: 2px solid rgba(102, 126, 234, 0.2);
-    border-radius: 12px;
     font-size: 15px;
+    font-weight: 500;
+    color: #94a3b8;
+}
+
+/* Right Column: Chat */
+.chat-column {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow: hidden;
+}
+
+.messages-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.empty-icon {
+    font-size: 48px;
+    opacity: 0.5;
+}
+
+.empty-text {
+    font-size: 15px;
+    color: #64748b;
+    margin: 0;
+}
+
+.message {
+    display: flex;
+    gap: 12px;
+    animation: messageSlideIn 0.3s ease;
+}
+
+@keyframes messageSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.message-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.message-user .message-avatar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.message-ai .message-avatar {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    box-shadow: 0 4px 12px rgba(240, 147, 251, 0.3);
+}
+
+.message-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.message-text {
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 14px;
     line-height: 1.6;
-    color: #1f2937;
-    resize: vertical;
-    min-height: 180px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.message-user .message-text {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-top-left-radius: 4px;
+}
+
+.message-ai .message-text {
+    background: rgba(248, 250, 252, 0.8);
+    color: #1a1a1a;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-top-left-radius: 4px;
+}
+
+.message-time {
+    font-size: 11px;
+    color: #94a3b8;
+    padding-left: 4px;
+}
+
+.loading-dots {
+    display: flex;
+    gap: 6px;
+    padding: 12px 16px;
+}
+
+.loading-dots span {
+    width: 8px;
+    height: 8px;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    border-radius: 50%;
+    animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.loading-dots span:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.loading-dots span:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+@keyframes bounce {
+    0%,
+    80%,
+    100% {
+        transform: scale(0);
+    }
+    40% {
+        transform: scale(1);
+    }
+}
+
+.input-area {
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    padding: 16px 24px;
+    background: linear-gradient(to top, rgba(248, 250, 252, 0.8), transparent);
+}
+
+.chat-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1.5px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #1a1a1a;
+    resize: none;
     font-family:
         -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    transition: all 0.2s ease;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     box-sizing: border-box;
+    background: white;
+    margin-bottom: 12px;
 }
 
-.query-textarea:focus {
+.chat-input:focus {
     outline: none;
     border-color: #667eea;
-    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    box-shadow:
+        0 0 0 1px #667eea,
+        0 0 0 4px rgba(102, 126, 234, 0.1);
 }
 
-.query-textarea::placeholder {
+.chat-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.chat-input::placeholder {
     color: #9ca3af;
 }
 
-.input-info {
+.input-actions {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 12px;
 }
 
 .char-count {
+    font-size: 12px;
     color: #9ca3af;
     font-weight: 500;
 }
 
-.shortcut-hint {
-    color: #6b7280;
+.send-btn {
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 50%;
+    cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 4px;
+    justify-content: center;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow:
+        0 0 0 1px rgba(102, 126, 234, 0.1),
+        0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
-.kbd {
-    display: inline-block;
-    padding: 3px 8px;
-    background: rgba(102, 126, 234, 0.1);
-    border: 1px solid rgba(102, 126, 234, 0.2);
-    border-radius: 6px;
-    font-size: 11px;
-    font-family: monospace;
-    color: #667eea;
-    font-weight: 600;
+.send-btn:hover:not(:disabled) {
+    transform: scale(1.1);
+    box-shadow:
+        0 0 0 1px rgba(102, 126, 234, 0.2),
+        0 6px 16px rgba(102, 126, 234, 0.4);
 }
 
-/* Prompts */
-.prompts-section {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.prompts-label {
-    font-size: 12px;
-    font-weight: 700;
-    color: #6b7280;
-    margin: 0;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
+.send-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: scale(1);
 }
 
 .prompts-grid {
@@ -419,124 +799,72 @@ export default {
 }
 
 .prompt-btn {
-    padding: 10px 14px;
+    padding: 11px 16px;
     font-size: 13px;
-    background: linear-gradient(
-        135deg,
-        rgba(102, 126, 234, 0.08) 0%,
-        rgba(118, 75, 162, 0.08) 100%
-    );
-    border: 1px solid rgba(102, 126, 234, 0.15);
-    color: #4b5563;
+    background: white;
+    border: 1.5px solid rgba(0, 0, 0, 0.08);
+    color: #334155;
     border-radius: 10px;
     cursor: pointer;
-    transition: all 0.2s ease;
-    font-weight: 600;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    position: relative;
+}
+
+.prompt-btn::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.prompt-text {
+    position: relative;
+    z-index: 1;
 }
 
 .prompt-btn:hover {
-    background: linear-gradient(
-        135deg,
-        rgba(102, 126, 234, 0.15) 0%,
-        rgba(118, 75, 162, 0.15) 100%
-    );
-    border-color: rgba(102, 126, 234, 0.3);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
-}
-
-/* Footer */
-.modal-footer {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 12px;
-    padding: 20px 32px;
-    background: rgba(102, 126, 234, 0.03);
-    border-top: 1px solid rgba(102, 126, 234, 0.1);
-    flex-shrink: 0;
-}
-
-.btn-cancel {
-    padding: 12px 24px;
-    font-size: 15px;
-    font-weight: 600;
-    color: #6b7280;
-    background: transparent;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.btn-cancel:hover {
-    color: #374151;
-    background: rgba(0, 0, 0, 0.05);
-}
-
-.btn-submit {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 28px;
-    font-size: 15px;
-    font-weight: 600;
+    border-color: #667eea;
     color: white;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
-}
-
-.btn-submit:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 6px 24px rgba(102, 126, 234, 0.4);
+    box-shadow:
+        0 4px 12px rgba(102, 126, 234, 0.25),
+        0 0 0 1px rgba(102, 126, 234, 0.1);
 }
 
-.btn-submit:active:not(:disabled) {
+.prompt-btn:hover::before {
+    opacity: 1;
+}
+
+.prompt-btn:active {
     transform: translateY(0);
-}
-
-.btn-submit:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    box-shadow: none;
-}
-
-.btn-icon {
-    font-size: 18px;
-}
-
-.btn-text {
-    font-weight: 700;
 }
 
 /* Scrollbar styling */
 .screenshot-column::-webkit-scrollbar,
-.input-column::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+.messages-container::-webkit-scrollbar {
+    width: 6px;
 }
 
 .screenshot-column::-webkit-scrollbar-track,
-.input-column::-webkit-scrollbar-track {
-    background: rgba(102, 126, 234, 0.05);
-    border-radius: 4px;
+.messages-container::-webkit-scrollbar-track {
+    background: transparent;
 }
 
 .screenshot-column::-webkit-scrollbar-thumb,
-.input-column::-webkit-scrollbar-thumb {
+.messages-container::-webkit-scrollbar-thumb {
     background: rgba(102, 126, 234, 0.2);
-    border-radius: 4px;
+    border-radius: 3px;
 }
 
 .screenshot-column::-webkit-scrollbar-thumb:hover,
-.input-column::-webkit-scrollbar-thumb:hover {
+.messages-container::-webkit-scrollbar-thumb:hover {
     background: rgba(102, 126, 234, 0.3);
 }
 
@@ -548,13 +876,13 @@ export default {
 
     .modal-body {
         grid-template-columns: 1fr;
-        grid-template-rows: 300px 1fr;
+        grid-template-rows: 200px 1fr;
         gap: 20px;
         padding: 24px;
     }
 
-    .input-column {
-        overflow-y: visible;
+    .chat-column {
+        min-height: 400px;
     }
 }
 

@@ -143,13 +143,18 @@ export default {
                 console.log("Failed to set initial window size:", error);
             }
 
-            // Load settings from localStorage
+            // Load settings from backend
             try {
-                const savedSettings = localStorage.getItem("korner-settings");
-                if (savedSettings) {
-                    settings.value = JSON.parse(savedSettings);
+                if (window.go && window.go.main && window.go.main.App) {
+                    const savedSettings =
+                        await window.go.main.App.GetSettings();
+                    if (savedSettings) {
+                        settings.value = savedSettings;
+                    }
                 }
-            } catch {}
+            } catch (error) {
+                console.error("Failed to load settings:", error);
+            }
 
             // Listen for system tray trigger
             try {
@@ -189,43 +194,46 @@ export default {
             // Toggle pie menu - if already showing, hide it
             if (showPieMenu.value) {
                 await hidePieMenu();
-            } else {
-                // 記錄浮動圖標的屏幕位置
-                try {
-                    const pos = await WindowGetPosition();
-                    iconScreenPos.value = {
-                        x: pos.x + 50,
-                        y: pos.y + 50,
-                    };
-                } catch (error) {
-                    console.log("Failed to save icon position:", error);
-                }
+                return;
+            }
 
-                menuCenterX.value = x;
-                menuCenterY.value = y;
+            // 記錄浮動圖標的屏幕位置
+            try {
+                const pos = await WindowGetPosition();
+                iconScreenPos.value = {
+                    x: pos.x + 50,
+                    y: pos.y + 50,
+                };
+            } catch (error) {
+                console.log("Failed to save icon position:", error);
+            }
 
-                // 先擴大窗口，再顯示 PieMenu
-                try {
-                    const newX = iconScreenPos.value.x - 150;
-                    const newY = iconScreenPos.value.y - 150;
-                    WindowSetSize(300, 300);
-                    WindowSetPosition(newX, newY);
-                } catch (error) {
-                    console.log("Failed to resize window:", error);
-                }
+            menuCenterX.value = x;
+            menuCenterY.value = y;
 
-                // 等待窗口調整完成後再顯示 PieMenu
-                await new Promise((resolve) => setTimeout(resolve, 50));
-                showPieMenu.value = true;
+            // 先顯示菜單，再擴大窗口（避免閃爍）
+            showPieMenu.value = true;
+
+            // 延遲擴大窗口
+            await new Promise((resolve) => setTimeout(resolve, 16));
+
+            try {
+                const newX = iconScreenPos.value.x - 150;
+                const newY = iconScreenPos.value.y - 150;
+                WindowSetSize(300, 300);
+                WindowSetPosition(newX, newY);
+            } catch (error) {
+                console.log("Failed to resize window:", error);
             }
         };
 
         const hidePieMenu = async () => {
             showPieMenu.value = false;
 
-            // 等待 CSS 淡出動畫完成（0.2s）後再縮小窗口
-            await new Promise((resolve) => setTimeout(resolve, 200));
+            // 等待 CSS 淡出動畫完成（0.2s）
+            await new Promise((resolve) => setTimeout(resolve, 220));
 
+            // 縮小窗口回到圖標大小
             if (iconScreenPos.value) {
                 try {
                     const newX = iconScreenPos.value.x - 50;
@@ -263,43 +271,47 @@ export default {
         };
 
         const handleScreenshot = async () => {
-            // 記錄當前視窗狀態（在隱藏菜單之前）
+            // 記錄當前視窗狀態
             try {
                 const pos = await WindowGetPosition();
                 const size = await WindowGetSize();
                 beforeScreenshotState.value = { pos, size };
             } catch {}
 
-            // 先開全螢幕
+            // 隱藏菜單
+            showPieMenu.value = false;
+
+            // 等待菜單隱藏動畫
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
+            // 開啟全螢幕
             try {
                 WindowFullscreen();
+                await new Promise((resolve) => setTimeout(resolve, 100));
             } catch {}
 
             // 顯示截圖覆蓋層
             showScreenshotOverlay.value = true;
-
-            // 隱藏菜單狀態（全螢幕後菜單會被覆蓋，這裡只是更新狀態）
-            showPieMenu.value = false;
         };
 
         const handleAskQuestion = async () => {
+            // 隱藏菜單
             await hidePieMenu();
-            currentQuery.value = {
-                screenshot: null,
-                timestamp: new Date(),
-            };
 
             // 調整視窗大小並置中
             try {
                 WindowSetSize(1200, 800);
-                // 等待大小調整完成
-                await new Promise((resolve) => setTimeout(resolve, 50));
-                // 置中視窗
+                await new Promise((resolve) => setTimeout(resolve, 100));
                 WindowCenter();
             } catch (error) {
                 console.log("Failed to resize/center window:", error);
             }
 
+            // 設置查詢狀態並顯示
+            currentQuery.value = {
+                screenshot: null,
+                timestamp: new Date(),
+            };
             showQueryWindow.value = true;
         };
 
@@ -309,9 +321,7 @@ export default {
             // 調整視窗大小並置中
             try {
                 WindowSetSize(720, 600);
-                // 等待大小調整完成
-                await new Promise((resolve) => setTimeout(resolve, 50));
-                // 置中視窗
+                await new Promise((resolve) => setTimeout(resolve, 100));
                 WindowCenter();
             } catch (error) {
                 console.log("Failed to resize/center window:", error);
@@ -322,18 +332,17 @@ export default {
 
         const closeSettings = async () => {
             showSettingsWindow.value = false;
-            // 檢查是否需要縮小窗口
+            await new Promise((resolve) => setTimeout(resolve, 100));
             await checkAndShrinkWindow();
         };
 
         const saveSettings = async (newSettings) => {
             settings.value = { ...newSettings };
-            // Save to localStorage
+            // Save to backend
             try {
-                localStorage.setItem(
-                    "korner-settings",
-                    JSON.stringify(settings.value),
-                );
+                if (window.go && window.go.main && window.go.main.App) {
+                    await window.go.main.App.SaveSettings(newSettings);
+                }
             } catch (error) {
                 console.error("Failed to save settings:", error);
             }
@@ -342,8 +351,10 @@ export default {
 
         const cancelScreenshot = async () => {
             showScreenshotOverlay.value = false;
+
             try {
                 WindowUnfullscreen();
+                await new Promise((resolve) => setTimeout(resolve, 100));
             } catch {}
 
             // 恢復到截圖前的狀態
@@ -353,6 +364,7 @@ export default {
                         beforeScreenshotState.value.size.w,
                         beforeScreenshotState.value.size.h,
                     );
+                    await new Promise((resolve) => setTimeout(resolve, 50));
                     WindowSetPosition(
                         beforeScreenshotState.value.pos.x,
                         beforeScreenshotState.value.pos.y,
@@ -360,33 +372,31 @@ export default {
                 } catch {}
                 beforeScreenshotState.value = null;
             } else {
-                // 檢查是否需要縮小窗口
                 await checkAndShrinkWindow();
             }
         };
 
         const handleScreenshotCaptured = async (screenshotData) => {
+            // 保存截圖數據
             currentQuery.value = {
                 screenshot: screenshotData,
                 timestamp: new Date(),
             };
             lastScreenshot.value = screenshotData;
+
+            // 隱藏覆蓋層
             showScreenshotOverlay.value = false;
 
-            // 截圖完成後取消全螢幕
+            // 退出全螢幕
             try {
                 WindowUnfullscreen();
+                await new Promise((resolve) => setTimeout(resolve, 150));
             } catch {}
-
-            // 等待取消全螢幕完成
-            await new Promise((resolve) => setTimeout(resolve, 100));
 
             // 調整視窗大小並置中
             try {
                 WindowSetSize(1200, 800);
-                // 等待大小調整完成
-                await new Promise((resolve) => setTimeout(resolve, 50));
-                // 置中視窗
+                await new Promise((resolve) => setTimeout(resolve, 100));
                 WindowCenter();
             } catch (error) {
                 console.log("Failed to resize/center window:", error);
@@ -394,20 +404,23 @@ export default {
 
             beforeScreenshotState.value = null;
 
-            setTimeout(() => {
-                showQueryWindow.value = true;
-            }, 100);
+            // 顯示查詢窗口
+            await new Promise((resolve) => setTimeout(resolve, 50));
+            showQueryWindow.value = true;
         };
 
         const cancelQueryWindow = async () => {
             showQueryWindow.value = false;
             currentQuery.value = null;
-            // 檢查是否需要縮小窗口
+            await new Promise((resolve) => setTimeout(resolve, 100));
             await checkAndShrinkWindow();
         };
 
-        const handleQuerySubmit = async (queryText) => {
-            if (!currentQuery.value) return;
+        const handleQuerySubmit = async (queryText, callback) => {
+            if (!currentQuery.value) {
+                console.error("[Korner] No current query");
+                return;
+            }
 
             let screenshotB64 = currentQuery.value.screenshot || "";
             if (screenshotB64 && screenshotB64.startsWith("data:image")) {
@@ -417,48 +430,52 @@ export default {
                 }
             }
 
-            showQueryWindow.value = false;
-            isLoadingResponse.value = true;
-            latestResponse.value = "";
-
             try {
+                let response;
                 if (window.go && window.go.main && window.go.main.App) {
-                    const response = await window.go.main.App.QueryLLM(
+                    console.log("[Korner] Sending query to backend...");
+                    response = await window.go.main.App.QueryLLM(
                         queryText,
                         screenshotB64,
                     );
-                    latestResponse.value = response;
-                    isLoadingResponse.value = false;
+                    console.log("[Korner] Received response from backend");
                 } else {
-                    setTimeout(() => {
-                        latestResponse.value = `Response to: "${queryText}"\n\n(Dev mode)`;
-                        isLoadingResponse.value = false;
-                    }, 1200);
+                    // Dev mode - simulate response
+                    console.log("[Korner] Dev mode - simulating response");
+                    await new Promise((resolve) => setTimeout(resolve, 1200));
+                    response = `This is a simulated response to: "${queryText}"\n\nIn production, this would be the actual AI response from the backend.`;
+                }
+
+                // Call the callback with the response
+                if (callback && typeof callback === "function") {
+                    callback(response);
+                } else {
+                    console.error("[Korner] Invalid callback function");
                 }
             } catch (error) {
-                latestResponse.value = `Error: ${error?.message || "Unknown"}`;
-                isLoadingResponse.value = false;
-            }
+                console.error("[Korner] Error in handleQuerySubmit:", error);
+                let errorMsg = "Unknown error occurred";
 
-            // 調整視窗大小並置中
-            try {
-                WindowSetSize(450, 500);
-                // 等待大小調整完成
-                await new Promise((resolve) => setTimeout(resolve, 50));
-                // 置中視窗
-                WindowCenter();
-            } catch (error) {
-                console.log("Failed to resize/center window:", error);
-            }
+                if (error && typeof error === "string") {
+                    errorMsg = error;
+                } else if (error && error.message) {
+                    errorMsg = error.message;
+                } else if (error) {
+                    errorMsg = String(error);
+                }
 
-            // 顯示 ResponseWindow
-            showResponseWindow.value = true;
-            currentQuery.value = null;
+                const fullErrorMsg = `Error: ${errorMsg}`;
+                console.error("[Korner] Full error message:", fullErrorMsg);
+
+                if (callback && typeof callback === "function") {
+                    callback(fullErrorMsg);
+                }
+            }
         };
 
         const closeResponseWindow = async () => {
             showResponseWindow.value = false;
-            // 檢查是否需要縮小窗口
+            await new Promise((resolve) => setTimeout(resolve, 100));
             await checkAndShrinkWindow();
         };
 
