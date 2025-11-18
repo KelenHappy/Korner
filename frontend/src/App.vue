@@ -197,13 +197,6 @@ export default {
                         x: pos.x + 50,
                         y: pos.y + 50,
                     };
-
-                    // 擴大窗口到 300x300，並調整位置使圖標保持在中心
-                    WindowSetSize(300, 300);
-                    WindowSetPosition(
-                        iconScreenPos.value.x - 150,
-                        iconScreenPos.value.y - 150,
-                    );
                 } catch (error) {
                     console.log("Failed to save icon position:", error);
                 }
@@ -211,13 +204,35 @@ export default {
                 menuCenterX.value = x;
                 menuCenterY.value = y;
                 showPieMenu.value = true;
+
+                // 打開後立即調整窗口
+                try {
+                    const newX = iconScreenPos.value.x - 150;
+                    const newY = iconScreenPos.value.y - 150;
+                    WindowSetSize(300, 300);
+                    WindowSetPosition(newX, newY);
+                } catch (error) {
+                    console.log("Failed to resize window:", error);
+                }
             }
         };
 
         const hidePieMenu = async () => {
             showPieMenu.value = false;
-            // 檢查是否需要縮小窗口
-            await checkAndShrinkWindow();
+
+            // 等待 CSS 淡出動畫完成（0.2s）後再縮小窗口
+            await new Promise((resolve) => setTimeout(resolve, 200));
+
+            if (iconScreenPos.value) {
+                try {
+                    const newX = iconScreenPos.value.x - 50;
+                    const newY = iconScreenPos.value.y - 50;
+                    WindowSetSize(100, 100);
+                    WindowSetPosition(newX, newY);
+                } catch (error) {
+                    console.log("Failed to shrink window:", error);
+                }
+            }
         };
 
         // 檢查是否需要縮小窗口的函數
