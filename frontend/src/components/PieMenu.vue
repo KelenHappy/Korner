@@ -1,9 +1,6 @@
 <template>
     <transition name="pie-fade">
         <div v-if="visible" class="pie-menu-container">
-            <!-- Background overlay -->
-            <div class="pie-menu-background" @click="$emit('hide')"></div>
-
             <!-- Pie Menu centered at window center -->
             <div class="pie-menu-content">
                 <!-- Center circle -->
@@ -118,18 +115,8 @@ export default {
     width: 100%;
     height: 100%;
     z-index: 10000;
-    pointer-events: auto;
-}
-
-.pie-menu-background {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(3px);
-    cursor: pointer;
+    pointer-events: none;
+    background: transparent;
 }
 
 .pie-menu-content {

@@ -66,9 +66,10 @@ func main() {
 			WindowIsTranslucent:  true,
 		},
 		Windows: &windows.Options{
-			WebviewIsTransparent: true,
-			WindowIsTranslucent:  true,
-			DisableWindowIcon:    false,
+			WebviewIsTransparent:              true,
+			WindowIsTranslucent:               true,
+			DisableWindowIcon:                 false,
+			DisableFramelessWindowDecorations: true,
 		},
 	})
 
