@@ -1,5 +1,5 @@
 <template>
-    <transition name="pie-fade">
+    <transition name="pie-menu">
         <div v-if="visible" class="pie-menu-container">
             <!-- Pie Menu centered at window center -->
             <div class="pie-menu-content">
@@ -10,7 +10,6 @@
 
                 <!-- Menu items -->
                 <div class="pie-items">
-                    <!-- Screenshot (top) -->
                     <div
                         class="pie-item screenshot-item"
                         :style="getPieItemStyle(0)"
@@ -22,7 +21,6 @@
                         <div class="pie-item-icon">📸</div>
                     </div>
 
-                    <!-- Ask (right) -->
                     <div
                         class="pie-item question-item"
                         :style="getPieItemStyle(1)"
@@ -34,7 +32,6 @@
                         <div class="pie-item-icon">💬</div>
                     </div>
 
-                    <!-- Settings (bottom) -->
                     <div
                         class="pie-item settings-item"
                         :style="getPieItemStyle(2)"
@@ -46,7 +43,6 @@
                         <div class="pie-item-icon">⚙️</div>
                     </div>
 
-                    <!-- Hide (left) -->
                     <div
                         class="pie-item hide-item"
                         :style="getPieItemStyle(3)"
@@ -238,12 +234,12 @@ export default {
     color: #333;
 }
 
-/* Animations */
-.pie-fade-enter-active {
-    animation: pieMenuIn 0.3s ease-out;
+/* Simple Animations */
+.pie-menu-enter-active {
+    animation: pieMenuIn 0.2s ease-out;
 }
 
-.pie-fade-leave-active {
+.pie-menu-leave-active {
     animation: pieMenuOut 0.2s ease-in;
 }
 
@@ -262,36 +258,6 @@ export default {
     }
     to {
         opacity: 0;
-    }
-}
-
-.pie-item {
-    animation: itemSlideIn 0.3s ease-out backwards;
-}
-
-.pie-item:nth-child(1) {
-    animation-delay: 0.05s;
-}
-
-.pie-item:nth-child(2) {
-    animation-delay: 0.1s;
-}
-
-.pie-item:nth-child(3) {
-    animation-delay: 0.15s;
-}
-
-.pie-item:nth-child(4) {
-    animation-delay: 0.2s;
-}
-
-@keyframes itemSlideIn {
-    from {
-        opacity: 0;
-        transform: translate(0, 0) scale(0.5);
-    }
-    to {
-        opacity: 1;
     }
 }
 </style>

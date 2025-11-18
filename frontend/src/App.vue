@@ -53,7 +53,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, nextTick } from "vue";
 import FloatingIcon from "./components/FloatingIcon.vue";
 import PieMenu from "./components/PieMenu.vue";
 import ScreenshotOverlay from "./components/ScreenshotOverlay.vue";
@@ -97,6 +97,9 @@ export default {
         const isLoadingResponse = ref(false);
         const lastScreenshot = ref(null);
         const beforeScreenshotState = ref(null);
+        const beforePieMenuState = ref(null);
+        const fixedCenterPos = ref(null);
+        const iconScreenPos = ref(null);
         const settings = ref({
             apiProvider: "openai",
             apiKey: "",
@@ -104,19 +107,28 @@ export default {
             floatingIcon: "🌸",
         });
 
-        // 統一的視窗大小調整函數，保持中心點不變
-        const resizeWindowKeepCenter = async (newWidth, newHeight) => {
+        // 設置窗口大小和位置，基於浮動圖標的屏幕位置
+        const setWindowForIcon = async (windowSize, iconOffset) => {
             try {
-                const pos = await WindowGetPosition();
-                const oldSize = await WindowGetSize();
-                const newSize = { w: newWidth, h: newHeight };
-                // 計算新位置，保持視窗中心不變
-                const newX = pos.x + (oldSize.w - newSize.w) / 2;
-                const newY = pos.y + (oldSize.h - newSize.h) / 2;
-                WindowSetSize(newSize.w, newSize.h);
-                WindowSetPosition(newX, newY);
+                let iconPos = iconScreenPos.value;
+                if (!iconPos) {
+                    // 如果沒有記錄圖標位置，獲取當前窗口位置作為圖標位置
+                    const pos = await WindowGetPosition();
+                    iconPos = {
+                        x: pos.x + 50,
+                        y: pos.y + 50,
+                    };
+                }
+
+                // 同步內容動畫：先設置位置，再設置大小
+                WindowSetPosition(
+                    iconPos.x - iconOffset,
+                    iconPos.y - iconOffset,
+                );
+                await new Promise((resolve) => setTimeout(resolve, 100));
+                WindowSetSize(windowSize, windowSize);
             } catch (error) {
-                console.log("Failed to resize window:", error);
+                console.log("Failed to set window:", error);
             }
         };
 
@@ -124,8 +136,12 @@ export default {
             try {
                 WindowSetAlwaysOnTop(true);
             } catch {}
-            // 初始設置小視窗 - 只顯示浮動圖標
-            await resizeWindowKeepCenter(100, 100);
+            // 初始設置小視窗 100x100
+            try {
+                WindowSetSize(100, 100);
+            } catch (error) {
+                console.log("Failed to set initial window size:", error);
+            }
 
             // Load settings from localStorage
             try {
@@ -174,18 +190,58 @@ export default {
             if (showPieMenu.value) {
                 await hidePieMenu();
             } else {
+                // 記錄浮動圖標的屏幕位置
+                try {
+                    const pos = await WindowGetPosition();
+                    iconScreenPos.value = {
+                        x: pos.x + 50,
+                        y: pos.y + 50,
+                    };
+
+                    // 擴大窗口到 300x300，並調整位置使圖標保持在中心
+                    WindowSetSize(300, 300);
+                    WindowSetPosition(
+                        iconScreenPos.value.x - 150,
+                        iconScreenPos.value.y - 150,
+                    );
+                } catch (error) {
+                    console.log("Failed to save icon position:", error);
+                }
+
                 menuCenterX.value = x;
                 menuCenterY.value = y;
                 showPieMenu.value = true;
-                // 放大視窗以顯示 PieMenu
-                await resizeWindowKeepCenter(300, 300);
             }
         };
 
         const hidePieMenu = async () => {
             showPieMenu.value = false;
-            // 縮回小視窗
-            await resizeWindowKeepCenter(100, 100);
+            // 檢查是否需要縮小窗口
+            await checkAndShrinkWindow();
+        };
+
+        // 檢查是否需要縮小窗口的函數
+        const checkAndShrinkWindow = async () => {
+            // 如果沒有主要內容顯示，縮小窗口
+            if (
+                !showPieMenu.value &&
+                !showScreenshotOverlay.value &&
+                !showQueryWindow.value &&
+                !showResponseWindow.value &&
+                !showSettingsWindow.value
+            ) {
+                try {
+                    WindowSetSize(100, 100);
+                    if (iconScreenPos.value) {
+                        WindowSetPosition(
+                            iconScreenPos.value.x - 50,
+                            iconScreenPos.value.y - 50,
+                        );
+                    }
+                } catch (error) {
+                    console.log("Failed to shrink window:", error);
+                }
+            }
         };
 
         const handleScreenshot = async () => {
@@ -248,8 +304,8 @@ export default {
 
         const closeSettings = async () => {
             showSettingsWindow.value = false;
-            // Return to small window
-            await resizeWindowKeepCenter(100, 100);
+            // 檢查是否需要縮小窗口
+            await checkAndShrinkWindow();
         };
 
         const saveSettings = async (newSettings) => {
@@ -286,8 +342,8 @@ export default {
                 } catch {}
                 beforeScreenshotState.value = null;
             } else {
-                // 如果沒有記錄，恢復小視窗
-                await resizeWindowKeepCenter(100, 100);
+                // 檢查是否需要縮小窗口
+                await checkAndShrinkWindow();
             }
         };
 
@@ -328,8 +384,8 @@ export default {
         const cancelQueryWindow = async () => {
             showQueryWindow.value = false;
             currentQuery.value = null;
-            // 恢復小視窗
-            await resizeWindowKeepCenter(100, 100);
+            // 檢查是否需要縮小窗口
+            await checkAndShrinkWindow();
         };
 
         const handleQuerySubmit = async (queryText) => {
@@ -384,8 +440,8 @@ export default {
 
         const closeResponseWindow = async () => {
             showResponseWindow.value = false;
-            // 恢復小視窗
-            await resizeWindowKeepCenter(100, 100);
+            // 檢查是否需要縮小窗口
+            await checkAndShrinkWindow();
         };
 
         return {
