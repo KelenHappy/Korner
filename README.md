@@ -33,6 +33,18 @@ Korner is a lightweight Agentic AI desktop assistant that allows users to captur
 * **Windows 10/11**
 * **macOS 12+** (Intel & Apple Silicon)
 
+## Build
+* **Windows 10/11**  
+
+```sh
+
+```
+* **macOS 12+** (Intel & Apple Silicon)  
+```sh
+
+```
+
+
 ## Technical Overview
 
 * **Framework:** Wails v2 (Go 1.22 + Vue 3)
