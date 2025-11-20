@@ -67,3 +67,7 @@ Planned upgrades include:
 ## Goal
 
 Korner aims to provide a truly integrated AI assistant for desktop users. By reducing the need to switch between applications or browser-based LLMs, it enhances productivity, learning, and daily life efficiency across personal and professional tasks.
+
+## Demo
+
+https://hackmd.io/@carina2992/rJU3JG5eZl
