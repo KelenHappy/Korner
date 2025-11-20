@@ -35,13 +35,14 @@ Korner is a lightweight Agentic AI desktop assistant that allows users to captur
 
 ## Build
 * **Windows 10/11**  
+[Install Go](https://go.dev/dl/)  
 
 ```sh
-
+go install github.com/wailsapp/wails/v2/cmd/wails@latest
 ```
 * **macOS 12+** (Intel & Apple Silicon)  
 ```sh
-
+brew install go        github.com/wailsapp/wails/v2/cmd/wails@latest
 ```
 
 
