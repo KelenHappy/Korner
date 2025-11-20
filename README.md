@@ -42,7 +42,8 @@ go install github.com/wailsapp/wails/v2/cmd/wails@latest
 ```
 * **macOS 12+** (Intel & Apple Silicon)  
 ```sh
-brew install go        github.com/wailsapp/wails/v2/cmd/wails@latest
+brew install go      
+go install  github.com/wailsapp/wails/v2/cmd/wails@latestgithub.com/wailsapp/wails/v2/cmd/wails@latest
 ```
 
 
