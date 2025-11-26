@@ -435,7 +435,7 @@ export default {
     width: 44px;
     height: 44px;
     border-radius: 12px;
-    background: #000000;
+    background: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -621,7 +621,7 @@ export default {
 }
 
 .message-user .message-avatar {
-    background: #000000;
+    background: #ffffff;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
@@ -647,14 +647,14 @@ export default {
 }
 
 .message-user .message-text {
-    background: #000000;
-    color: white;
+    background: #ffffff;
+    color: #000000;
     border-top-left-radius: 4px;
 }
 
 .message-ai .message-text {
-    background: rgba(248, 250, 252, 0.8);
-    color: #1a1a1a;
+    background: #ffffff;
+    color: #6b7280;
     border: 1px solid rgba(0, 0, 0, 0.06);
     border-top-left-radius: 4px;
 }

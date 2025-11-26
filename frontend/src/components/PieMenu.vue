@@ -1,28 +1,43 @@
 <template>
     <transition name="pie-container-fade">
         <div v-if="visible" class="pie-menu-container" @click.self="$emit('hide')">
-            
             <div 
                 class="pie-menu-content"
-                :style="{ top: clickY + 'px', left: clickX + 'px' }"
+                :class="{ 'is-closing': isClosing }"
+                :style="contentStyle"
             >
                 <transition-group name="pie-pop" tag="div" class="pie-items">
                     <div
+                        v-if="showItems"
+                        key="item3"
+                        class="pie-item hide-theme"
+                        :style="{ '--delay': '0.05s' }"
+                        @click.stop="$emit('hide-pet')"
+                        @mouseenter="activeItem = 3"
+                        @mouseleave="activeItem = null"
+                    >
+                        <span class="pie-icon">💤</span>
+                        <span class="pie-label" v-show="activeItem === 3">休息</span>
+                    </div>
+
+                    <div
+                        v-if="showItems"
                         key="item0"
                         class="pie-item photo-theme"
-                        :style="{ ...getPieItemStyle(0), '--delay': '0.05s' }"
+                        :style="{ '--delay': '0.1s' }"
                         @click.stop="$emit('screenshot')"
                         @mouseenter="activeItem = 0"
                         @mouseleave="activeItem = null"
                     >
                         <span class="pie-icon">📸</span>
-                         <span class="pie-label" v-show="activeItem === 0">拍照</span>
+                        <span class="pie-label" v-show="activeItem === 0">拍照</span>
                     </div>
 
                     <div
+                        v-if="showItems"
                         key="item1"
                         class="pie-item talk-theme"
-                        :style="{ ...getPieItemStyle(1), '--delay': '0.1s' }"
+                        :style="{ '--delay': '0.15s' }"
                         @click.stop="$emit('ask-question')"
                         @mouseenter="activeItem = 1"
                         @mouseleave="activeItem = null"
@@ -32,27 +47,16 @@
                     </div>
 
                     <div
+                        v-if="showItems"
                         key="item2"
                         class="pie-item settings-theme"
-                        :style="{ ...getPieItemStyle(2), '--delay': '0.15s' }"
+                        :style="{ '--delay': '0.2s' }"
                         @click.stop="$emit('settings')"
                         @mouseenter="activeItem = 2"
                         @mouseleave="activeItem = null"
                     >
                         <span class="pie-icon">⚙️</span>
                         <span class="pie-label" v-show="activeItem === 2">設定</span>
-                    </div>
-
-                    <div
-                        key="item3"
-                        class="pie-item hide-theme"
-                        :style="{ ...getPieItemStyle(3), '--delay': '0.2s' }"
-                        @click.stop="$emit('hide-pet')"
-                        @mouseenter="activeItem = 3"
-                        @mouseleave="activeItem = null"
-                    >
-                        <span class="pie-icon">💤</span>
-                        <span class="pie-label" v-show="activeItem === 3">休息</span>
                     </div>
                 </transition-group>
             </div>
@@ -61,7 +65,7 @@
 </template>
 
 <script>
-import { ref } from "vue";
+import { ref, computed, watch } from "vue";
 
 export default {
     name: "DesktopPetPieMenu",
@@ -79,30 +83,61 @@ export default {
             type: Number,
             default: 0,
         },
+        // 桌寵位置（關閉時移動到這裡）
+        petX: {
+            type: Number,
+            default: 0,
+        },
+        petY: {
+            type: Number,
+            default: 0,
+        },
     },
     emits: ["screenshot", "ask-question", "settings", "hide", "hide-pet"],
-    setup() {
+    setup(props) {
         const activeItem = ref(null);
-        // 半徑可以稍微加大一點，讓卡通圖標不那麼擁擠
-        const radius = 40; 
+        const isClosing = ref(false);
+        const showItems = ref(false);
 
-        const getPieItemStyle = (index) => {
-            const angle = (index * 360) / 4 - 90;
-            const radians = (angle * Math.PI) / 180;
-            // 這裡計算的是「最終位置」的偏移量
-            const x = Math.cos(radians) * radius;
-            const y = Math.sin(radians) * radius;
-
-            // 利用 CSS 變數存儲最終位置，供動畫使用
+        // 計算內容位置：關閉時移動到桌寵位置
+        const contentStyle = computed(() => {
+            if (isClosing.value) {
+                return {
+                    top: props.petY + 'px',
+                    left: props.petX + 'px',
+                    transition: 'top 0.3s ease-in, left 0.3s ease-in'
+                };
+            }
             return {
-                '--end-x': `${x}px`,
-                '--end-y': `${y}px`,
+                top: props.clickY + 'px',
+                left: props.clickX + 'px'
             };
-        };
+        });
+
+        // 監聽 visible 變化
+        watch(() => props.visible, (newVal, oldVal) => {
+            if (oldVal && !newVal) {
+                // 關閉：先隱藏 items，等縮小動畫完成後再移動
+                showItems.value = false;
+                setTimeout(() => {
+                    isClosing.value = true;
+                }, 100);
+            } else if (newVal) {
+                // 打開：先重置狀態，等位置設定好後再顯示 items
+                isClosing.value = false;
+                showItems.value = false;
+                // 等待下一幀讓位置更新，然後顯示 items
+                setTimeout(() => {
+                    showItems.value = true;
+                }, 50);
+            }
+        });
 
         return {
             activeItem,
-            getPieItemStyle,
+            isClosing,
+            showItems,
+            contentStyle,
         };
     },
 };
@@ -120,26 +155,31 @@ export default {
 .pie-container-fade-enter-from, .pie-container-fade-leave-to { opacity: 0; }
 
 
-/* 核心內容定位點，寬高為 0，確保是絕對中心 */
+/* 核心內容定位點 */
 .pie-menu-content {
     position: absolute;
-    width: 0; height: 0;
-    /* 這裡不需要 transform translate，因為 top/left 已經是精確點擊位置 */
+    /* 水平居中，垂直從頂部開始 */
+    transform: translateX(-50%);
     pointer-events: none; /* 讓點擊穿透到 items */
 }
 
+/* 關閉時的過渡效果 */
+.pie-menu-content.is-closing {
+    transition: top 0.3s ease-in, left 0.3s ease-in;
+}
+
 .pie-items {
-    position: absolute;
-    /* 讓 items 的中心點對齊 content 的中心點 */
-    top: 0; left: 0;
-    width: 0; height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: nowrap;
 }
 
 /* --- 卡通化按鈕樣式 --- */
 .pie-item {
-    position: absolute;
-    /* 讓按鈕中心對齊定位點 */
-    left: -20px; top: -20px; 
+    position: relative;
     width: 40px; height: 40px;
     border-radius: 50%;
     display: flex;
@@ -147,14 +187,14 @@ export default {
     cursor: pointer;
     pointer-events: auto;
     user-select: none;
+    flex-shrink: 0;
 
     /* 桌寵風格：粗邊框、鮮明陰影 */
     background: #fff;
     border: 3px solid #4a4a4a;
     box-shadow: 2px 4px 0px rgba(0,0,0,0.3); 
     
-    /* 這是最終靜止狀態的位置，從 CSS 變數讀取 */
-    transform: translate(var(--end-x), var(--end-y)) scale(1);
+    transform: scale(1);
     transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s, box-shadow 0.2s; /* 懸停時的彈性 */
 }
 
@@ -162,22 +202,22 @@ export default {
 
 /* Hover 效果：更 Q 彈 */
 .pie-item:hover {
-    transform: translate(var(--end-x), var(--end-y)) scale(1.2) rotate(5deg);
+    transform: scale(1.2) rotate(5deg);
     box-shadow: 4px 6px 0px rgba(0,0,0,0.4);
     z-index: 10;
 }
 
-/* --- 不同功能的配色主題 (可選) --- */
 .photo-theme:hover { border-color: #ff6b6b; color: #ff6b6b; }
 .talk-theme:hover { border-color: #51cf66; color: #51cf66; }
 .settings-theme:hover { border-color: #339af0; color: #339af0; }
 .hide-theme:hover { border-color: #fcc419; color: #fcc419; }
 
 
-/* --- Hover 文字標籤 --- */
 .pie-label {
     position: absolute;
-    bottom: -25px; /* 顯示在圓圈下方 */
+    bottom: -28px; 
+    left: 50%;
+    transform: translateX(-50%);
     white-space: nowrap;
     background: rgba(50, 50, 50, 0.9);
     color: #fff;
@@ -189,28 +229,25 @@ export default {
     box-shadow: 1px 2px 4px rgba(0,0,0,0.2);
 }
 
-/* --- 核心動畫：Q 彈噴射 (Pop Animation) --- */
-/* 進場前狀態：在中心點，縮小為 0 */
 .pie-pop-enter-from {
-    transform: translate(0px, 0px) scale(0.1) !important; /* 強制覆蓋原本的 translate */
+    transform: scale(0.1) !important;
     opacity: 0;
 }
 
-/* 進場動畫過程 */
 .pie-pop-enter-active {
-    /* 使用貝茲曲線製造「衝過頭再拉回」的彈性效果 */
+    
     transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease-out;
-    /* 應用 JavaScript 計算出的延遲 */
     transition-delay: var(--delay);
 }
 
-/* 離場狀態 (可選：讓它們縮回中心，或者直接淡出) */
 .pie-pop-leave-to {
-     transform: translate(0px, 0px) scale(0.1) !important;
+     transform: scale(0.1) !important;
      opacity: 0;
-     transition: transform 0.3s ease-in, opacity 0.2s ease-in;
+     transition: transform 0.15s ease-in, opacity 0.1s ease-in;
 }
-/* 離場時取消延遲，一起消失比較俐落 */
-.pie-pop-leave-active { transition-delay: 0s !important; }
+
+.pie-pop-leave-active { 
+    transition-delay: 0s !important;
+}
 
 </style>

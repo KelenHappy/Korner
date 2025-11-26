@@ -12,6 +12,8 @@
             :visible="showPieMenu"
             :click-x="menuCenterX"
             :click-y="menuCenterY"
+            :pet-x="50"
+            :pet-y="50"
             @screenshot="handleScreenshot"
             @ask-question="handleAskQuestion"
             @settings="handleSettings"
@@ -242,11 +244,12 @@ export default {
                 console.log("Failed to save icon position:", error);
             }
 
-            // 先擴大窗口到 300x300
+            // 先擴大窗口到 100x280（寬度只需要放1個按鈕，高度足夠放4個按鈕加間距）
             try {
-                const newX = iconScreenPos.value.x - 150;
-                const newY = iconScreenPos.value.y - 150;
-                WindowSetSize(300, 300);
+                // 窗口左邊對齊圖標中心，上邊在圖標下方
+                const newX = iconScreenPos.value.x - 50;
+                const newY = iconScreenPos.value.y - 10; // 圖標上方一點
+                WindowSetSize(100, 280);
                 WindowSetPosition(newX, newY);
             } catch (error) {
                 console.log("Failed to resize window:", error);
@@ -255,9 +258,9 @@ export default {
             // 延遲一下，讓窗口大小更新完成
             await new Promise((resolve) => setTimeout(resolve, 16));
 
-            // 菜單始終顯示在 300x300 窗口的中心
-            menuCenterX.value = 150;
-            menuCenterY.value = 150;
+            // 菜單顯示在窗口頂部（窗口相對座標）
+            menuCenterX.value = 50;
+            menuCenterY.value = 20;
 
             // 顯示菜單
             showPieMenu.value = true;
