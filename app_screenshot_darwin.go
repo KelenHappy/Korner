@@ -39,7 +39,6 @@ func captureScreenshot(ctx context.Context, x, y, width, height int) (string, er
 // Behavior:
 // - Region mode: if width > 0 && height > 0, captures the rectangle at (x,y,width,height) without UI.
 // - Interactive mode: otherwise, opens the native selection UI (-i).
-//
 // Notes:
 // - Requires the "screencapture" utility available on macOS.
 // - Uses a temporary PNG file, which is removed after reading.
