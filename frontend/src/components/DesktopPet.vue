@@ -2,11 +2,9 @@
     <div class="desktop-pet-wrapper">
         <!-- Draggable pet avatar -->
         <div
+            ref="petRef"
             class="pet-container"
             :class="{ dragging: isDraggingPet }"
-            :style="{
-                transform: `translate(${petPosition.x}px, ${petPosition.y}px)`,
-            }"
             @pointerdown="startDragPet"
         >
             <!-- Pet character with logo -->
@@ -142,7 +140,7 @@
 </template>
 
 <script>
-import { ref, watch, onUnmounted } from "vue";
+import { ref, watch, onMounted, onUnmounted } from "vue";
 
 export default {
     name: "DesktopPet",
@@ -169,20 +167,21 @@ export default {
         const showMenu = ref(false);
         const showChatBubble = ref(false);
         const currentScreenshot = ref(null);
+        const petRef = ref(null);
 
-        // Position tracking
+        // Position tracking (for menu/status only)
         const petPosition = ref({ x: 20, y: 20 });
         const chatPosition = ref({ x: 180, y: 20 });
 
         // Drag state
         const isDraggingPet = ref(false);
         const isDraggingChat = ref(false);
-        let dragStartX = 0;
-        let dragStartY = 0;
-        let dragStartPetX = 0;
-        let dragStartPetY = 0;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
         let dragStartChatX = 0;
         let dragStartChatY = 0;
+        let dragStartX = 0;
+        let dragStartY = 0;
 
 
         const toggleMenu = () => {
@@ -237,46 +236,68 @@ export default {
             },
         );
 
-        // Dragging functions for pet
+        // Initialize pet position on mount
+        onMounted(() => {
+            if (petRef.value) {
+                petRef.value.style.transform = `translate(${petPosition.value.x}px, ${petPosition.value.y}px)`;
+            }
+        });
+
+        // Dragging functions for pet - bypass Vue reactivity for instant response
         const startDragPet = (e) => {
             // Don't drag if clicking on buttons
             if (e.target.closest("button")) return;
 
-            isDraggingPet.value = true;
-            dragStartX = e.clientX;
-            dragStartY = e.clientY;
-            dragStartPetX = petPosition.value.x;
-            dragStartPetY = petPosition.value.y;
+            e.preventDefault();
+            
+            const el = petRef.value;
+            if (!el) return;
 
-            document.addEventListener("pointermove", onDragPet, { passive: true });
-            document.addEventListener("pointerup", stopDragPet);
+            // Get current position from transform
+            const style = window.getComputedStyle(el);
+            const matrix = new DOMMatrix(style.transform);
+            
+            isDraggingPet.value = true;
+            dragOffsetX = e.clientX - matrix.m41;
+            dragOffsetY = e.clientY - matrix.m42;
+
+            // Use element-level listeners for better tracking
+            el.setPointerCapture(e.pointerId);
+            el.addEventListener("pointermove", onDragPet);
+            el.addEventListener("pointerup", stopDragPet);
+            el.addEventListener("pointercancel", stopDragPet);
         };
 
         const onDragPet = (e) => {
-            if (!isDraggingPet.value) return;
+            if (!isDraggingPet.value || !petRef.value) return;
 
-            const deltaX = e.clientX - dragStartX;
-            const deltaY = e.clientY - dragStartY;
-
-            // Calculate new position without boundary checking first
-            let newX = dragStartPetX + deltaX;
-            let newY = dragStartPetY + deltaY;
+            // Calculate new position directly
+            let newX = e.clientX - dragOffsetX;
+            let newY = e.clientY - dragOffsetY;
 
             // Apply boundary constraints
-            const petWidth = 150;
-            const petHeight = 150;
+            const petWidth = 80;
+            const petHeight = 80;
             newX = Math.max(0, Math.min(newX, window.innerWidth - petWidth));
             newY = Math.max(0, Math.min(newY, window.innerHeight - petHeight));
 
-            // Update position immediately for responsive dragging
+            // Direct DOM manipulation - bypasses Vue reactivity for instant update
+            petRef.value.style.transform = `translate(${newX}px, ${newY}px)`;
+            
+            // Update ref for menu positioning (async, doesn't affect drag)
             petPosition.value.x = newX;
             petPosition.value.y = newY;
         };
 
-        const stopDragPet = () => {
+        const stopDragPet = (e) => {
             isDraggingPet.value = false;
-            document.removeEventListener("pointermove", onDragPet);
-            document.removeEventListener("pointerup", stopDragPet);
+            const el = petRef.value;
+            if (el) {
+                el.releasePointerCapture(e.pointerId);
+                el.removeEventListener("pointermove", onDragPet);
+                el.removeEventListener("pointerup", stopDragPet);
+                el.removeEventListener("pointercancel", stopDragPet);
+            }
         };
 
         // Dragging functions for chat
@@ -326,6 +347,7 @@ export default {
         });
 
         return {
+            petRef,
             showMenu,
             showChatBubble,
             currentScreenshot,
@@ -360,6 +382,8 @@ export default {
 
 .pet-container {
     position: fixed;
+    top: 0;
+    left: 0;
     width: 80px;
     height: 80px;
     display: flex;
@@ -369,10 +393,16 @@ export default {
     user-select: none;
     pointer-events: auto;
     will-change: transform;
+    touch-action: none;
 }
 
 .pet-container.dragging {
     cursor: grabbing;
+}
+
+.pet-container.dragging .pet-character {
+    animation: none;
+    transition: none;
 }
 
 .pet-container:active {

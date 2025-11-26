@@ -33,18 +33,15 @@ export default {
         const hasMoved = ref(false);
 
         let tooltipTimer = null;
-        let rafId = null;
-        let pendingPosition = null;
 
         const onMouseDown = async (e) => {
-            if (e.button !== 0) return; // Only left click
+            if (e.button !== 0) return;
 
             isDragging.value = true;
             hasMoved.value = false;
-            dragStart.x = e.screenX; // Use screenX/Y for window positioning
+            dragStart.x = e.screenX;
             dragStart.y = e.screenY;
 
-            // Get current window position
             try {
                 const winPos = await WindowGetPosition();
                 windowStart.x = winPos.x;
@@ -66,60 +63,21 @@ export default {
             const deltaX = e.screenX - dragStart.x;
             const deltaY = e.screenY - dragStart.y;
 
-            // If moved more than 5px, consider it a drag
             if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
                 hasMoved.value = true;
             }
 
-            // Store pending position
-            pendingPosition = {
-                x: windowStart.x + deltaX,
-                y: windowStart.y + deltaY,
-            };
-
-            // Schedule update using requestAnimationFrame
-            if (!rafId) {
-                rafId = requestAnimationFrame(updateWindowPosition);
-            }
-        };
-
-        const updateWindowPosition = () => {
-            rafId = null;
-            if (pendingPosition && isDragging.value) {
-                try {
-                    WindowSetPosition(pendingPosition.x, pendingPosition.y);
-                } catch (error) {
-                    console.log("Failed to set window position:", error);
-                }
-            }
+            WindowSetPosition(windowStart.x + deltaX, windowStart.y + deltaY);
         };
 
         const onMouseUp = () => {
             isDragging.value = false;
             document.removeEventListener("mousemove", onMouseMove);
             document.removeEventListener("mouseup", onMouseUp);
-
-            // Cancel any pending animation frame
-            if (rafId) {
-                cancelAnimationFrame(rafId);
-                rafId = null;
-            }
-
-            // Apply final position if there's a pending one
-            if (pendingPosition) {
-                try {
-                    WindowSetPosition(pendingPosition.x, pendingPosition.y);
-                } catch (error) {
-                    console.log("Failed to set window position:", error);
-                }
-                pendingPosition = null;
-            }
         };
 
         const onClick = async (e) => {
-            // Only trigger menu if it wasn't a drag
             if (!hasMoved.value) {
-                // Menu appears at center of window (in window coordinates)
                 const centerX = window.innerWidth / 2;
                 const centerY = window.innerHeight / 2;
                 emit("show-menu", centerX, centerY);
@@ -142,7 +100,6 @@ export default {
         };
 
         onMounted(() => {
-            // Stop pulse after a few seconds
             setTimeout(() => {
                 showPulse.value = false;
             }, 3000);
@@ -153,9 +110,6 @@ export default {
             document.removeEventListener("mouseup", onMouseUp);
             if (tooltipTimer) {
                 clearTimeout(tooltipTimer);
-            }
-            if (rafId) {
-                cancelAnimationFrame(rafId);
             }
         });
 
@@ -196,31 +150,24 @@ export default {
     background: #fff;
     border: 3px solid #4a4a4a;
     border-radius: 50%;
-    box-shadow: 2px 4px 0px rgba(0,0,0,0.3);
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
+    box-shadow: 2px 4px 0px rgba(0, 0, 0, 0.3);
+    transition: box-shadow 0.2s;
 }
 
 .icon-container:hover {
-    transform: scale(1.2) rotate(5deg);
-    box-shadow: 4px 6px 0px rgba(0,0,0,0.4);
-}
-
-.icon-container:active {
-    transform: scale(0.95);
+    box-shadow: 4px 6px 0px rgba(0, 0, 0, 0.4);
 }
 
 .icon-emoji {
     font-size: 18px;
     position: relative;
     z-index: 2;
-    transition: transform 0.2s ease;
 }
 
 .icon-glow {
     display: none;
 }
 
-/* Pulse animation */
 .icon-container.pulse {
     animation: pulse 2s ease-in-out infinite;
 }
@@ -228,16 +175,13 @@ export default {
 @keyframes pulse {
     0%,
     100% {
-        transform: scale(1);
-        box-shadow: 2px 4px 0px rgba(0,0,0,0.3);
+        box-shadow: 2px 4px 0px rgba(0, 0, 0, 0.3);
     }
     50% {
-        transform: scale(1.05);
-        box-shadow: 4px 6px 0px rgba(0,0,0,0.4);
+        box-shadow: 4px 6px 0px rgba(0, 0, 0, 0.4);
     }
 }
 
-/* Tooltip */
 .icon-tooltip {
     position: absolute;
     top: -35px;
