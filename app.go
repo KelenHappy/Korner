@@ -114,6 +114,9 @@ func (a *App) domReady(ctx context.Context) {
 	// Log DPI scale for diagnostics
 	logDPIInfo()
 
+	// Disable Windows Snap feature
+	disableSnap()
+
 	// Initialize system tray
 	go a.InitSystemTray()
 

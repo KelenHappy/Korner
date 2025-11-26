@@ -66,19 +66,20 @@ html,
 body {
     width: 100%;
     height: 100%;
-    background: white;
+    background: transparent;
     overflow: hidden;
 }
 
 #app {
     width: 100%;
     height: 100%;
+    background: transparent;
 }
 
 .app-container {
     width: 100%;
     height: 100%;
-    background: white;
+    background: transparent;
     pointer-events: none;
 }
 

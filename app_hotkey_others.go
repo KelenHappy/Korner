@@ -15,3 +15,8 @@ func (a *App) RegisterGlobalHotkey() error {
 func (a *App) UnregisterGlobalHotkey() {
 	log.Println("Global hotkey not implemented on this platform")
 }
+
+// disableSnap is a no-op on non-Windows platforms
+func disableSnap() {
+	// Not needed on non-Windows platforms
+}

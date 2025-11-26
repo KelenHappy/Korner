@@ -70,6 +70,7 @@ func main() {
 			WindowIsTranslucent:               true,
 			DisableWindowIcon:                 false,
 			DisableFramelessWindowDecorations: true,
+			DisablePinchZoom:                  true,
 		},
 	})
 

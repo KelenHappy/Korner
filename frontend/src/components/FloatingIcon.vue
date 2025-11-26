@@ -1,19 +1,13 @@
 <template>
-    <div class="floating-icon" @mousedown="onMouseDown" @click="onClick">
+    <div class="floating-icon" @dblclick="onClick">
         <div class="icon-container" :class="{ pulse: showPulse }">
             <div class="icon-emoji">{{ icon }}</div>
-            <div class="icon-glow"></div>
         </div>
-        <div class="icon-tooltip" v-if="showTooltip">Korner AI</div>
     </div>
 </template>
 
 <script>
-import { ref, reactive, onMounted, onUnmounted } from "vue";
-import {
-    WindowSetPosition,
-    WindowGetPosition,
-} from "../../wailsjs/runtime/runtime";
+import { ref, onMounted, onUnmounted } from "vue";
 
 export default {
     name: "FloatingIcon",
@@ -25,78 +19,10 @@ export default {
     },
     emits: ["show-menu"],
     setup(props, { emit }) {
-        const isDragging = ref(false);
-        const dragStart = reactive({ x: 0, y: 0 });
-        const windowStart = reactive({ x: 0, y: 0 });
-        const showTooltip = ref(false);
         const showPulse = ref(true);
-        const hasMoved = ref(false);
 
-        let tooltipTimer = null;
-
-        const onMouseDown = async (e) => {
-            if (e.button !== 0) return;
-
-            isDragging.value = true;
-            hasMoved.value = false;
-            dragStart.x = e.screenX;
-            dragStart.y = e.screenY;
-
-            try {
-                const winPos = await WindowGetPosition();
-                windowStart.x = winPos.x;
-                windowStart.y = winPos.y;
-            } catch (error) {
-                console.log("Failed to get window position:", error);
-            }
-
-            document.addEventListener("mousemove", onMouseMove);
-            document.addEventListener("mouseup", onMouseUp);
-
-            e.preventDefault();
-            e.stopPropagation();
-        };
-
-        const onMouseMove = (e) => {
-            if (!isDragging.value) return;
-
-            const deltaX = e.screenX - dragStart.x;
-            const deltaY = e.screenY - dragStart.y;
-
-            if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
-                hasMoved.value = true;
-            }
-
-            WindowSetPosition(windowStart.x + deltaX, windowStart.y + deltaY);
-        };
-
-        const onMouseUp = () => {
-            isDragging.value = false;
-            document.removeEventListener("mousemove", onMouseMove);
-            document.removeEventListener("mouseup", onMouseUp);
-        };
-
-        const onClick = async (e) => {
-            if (!hasMoved.value) {
-                const centerX = window.innerWidth / 2;
-                const centerY = window.innerHeight / 2;
-                emit("show-menu", centerX, centerY);
-            }
-            hasMoved.value = false;
-        };
-
-        const onMouseEnter = () => {
-            showPulse.value = false;
-            tooltipTimer = setTimeout(() => {
-                showTooltip.value = true;
-            }, 500);
-        };
-
-        const onMouseLeave = () => {
-            showTooltip.value = false;
-            if (tooltipTimer) {
-                clearTimeout(tooltipTimer);
-            }
+        const onClick = () => {
+            emit("show-menu", 50, 50);
         };
 
         onMounted(() => {
@@ -105,18 +31,8 @@ export default {
             }, 3000);
         });
 
-        onUnmounted(() => {
-            document.removeEventListener("mousemove", onMouseMove);
-            document.removeEventListener("mouseup", onMouseUp);
-            if (tooltipTimer) {
-                clearTimeout(tooltipTimer);
-            }
-        });
-
         return {
-            showTooltip,
             showPulse,
-            onMouseDown,
             onClick,
         };
     },
@@ -134,6 +50,7 @@ export default {
     cursor: grab;
     user-select: none;
     z-index: 9999;
+    --wails-draggable: drag;
 }
 
 .floating-icon:active {
@@ -141,7 +58,6 @@ export default {
 }
 
 .icon-container {
-    position: relative;
     width: 100%;
     height: 100%;
     display: flex;
@@ -151,21 +67,10 @@ export default {
     border: 3px solid #4a4a4a;
     border-radius: 50%;
     box-shadow: 2px 4px 0px rgba(0, 0, 0, 0.3);
-    transition: box-shadow 0.2s;
-}
-
-.icon-container:hover {
-    box-shadow: 4px 6px 0px rgba(0, 0, 0, 0.4);
 }
 
 .icon-emoji {
     font-size: 18px;
-    position: relative;
-    z-index: 2;
-}
-
-.icon-glow {
-    display: none;
 }
 
 .icon-container.pulse {
@@ -173,49 +78,7 @@ export default {
 }
 
 @keyframes pulse {
-    0%,
-    100% {
-        box-shadow: 2px 4px 0px rgba(0, 0, 0, 0.3);
-    }
-    50% {
-        box-shadow: 4px 6px 0px rgba(0, 0, 0, 0.4);
-    }
-}
-
-.icon-tooltip {
-    position: absolute;
-    top: -35px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 6px 12px;
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
-    font-size: 12px;
-    font-weight: 500;
-    border-radius: 6px;
-    white-space: nowrap;
-    pointer-events: none;
-    animation: tooltipFadeIn 0.2s ease;
-}
-
-.icon-tooltip::after {
-    content: "";
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border: 5px solid transparent;
-    border-top-color: rgba(0, 0, 0, 0.8);
-}
-
-@keyframes tooltipFadeIn {
-    from {
-        opacity: 0;
-        transform: translateX(-50%) translateY(-5px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-    }
+    0%, 100% { box-shadow: 2px 4px 0px rgba(0, 0, 0, 0.3); }
+    50% { box-shadow: 4px 6px 0px rgba(0, 0, 0, 0.4); }
 }
 </style>
