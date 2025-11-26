@@ -60,3 +60,4 @@ Thumbs.db
 *.jpeg
 !build/appicon.*
 nul
+korner.log
