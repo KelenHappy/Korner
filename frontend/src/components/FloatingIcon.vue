@@ -116,15 +116,13 @@ export default {
             }
         };
 
-        const onClick = (e) => {
+        const onClick = async (e) => {
             // Only trigger menu if it wasn't a drag
             if (!hasMoved.value) {
-                // Menu appears at center of window
-                emit(
-                    "show-menu",
-                    window.innerWidth / 2,
-                    window.innerHeight / 2,
-                );
+                // Menu appears at center of window (in window coordinates)
+                const centerX = window.innerWidth / 2;
+                const centerY = window.innerHeight / 2;
+                emit("show-menu", centerX, centerY);
             }
             hasMoved.value = false;
         };
@@ -195,15 +193,16 @@ export default {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #fff;
+    border: 3px solid #4a4a4a;
     border-radius: 50%;
-    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
-    transition: all 0.3s ease;
+    box-shadow: 2px 4px 0px rgba(0,0,0,0.3);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
 }
 
 .icon-container:hover {
-    transform: scale(1.1);
-    box-shadow: 0 12px 32px rgba(102, 126, 234, 0.6);
+    transform: scale(1.2) rotate(5deg);
+    box-shadow: 4px 6px 0px rgba(0,0,0,0.4);
 }
 
 .icon-container:active {
@@ -214,27 +213,11 @@ export default {
     font-size: 18px;
     position: relative;
     z-index: 2;
-    transition: transform 0.3s ease;
-}
-
-.icon-container:hover .icon-emoji {
-    transform: rotate(10deg);
+    transition: transform 0.2s ease;
 }
 
 .icon-glow {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.3), transparent);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.icon-container:hover .icon-glow {
-    opacity: 1;
+    display: none;
 }
 
 /* Pulse animation */
@@ -246,11 +229,11 @@ export default {
     0%,
     100% {
         transform: scale(1);
-        box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+        box-shadow: 2px 4px 0px rgba(0,0,0,0.3);
     }
     50% {
         transform: scale(1.05);
-        box-shadow: 0 12px 32px rgba(102, 126, 234, 0.6);
+        box-shadow: 4px 6px 0px rgba(0,0,0,0.4);
     }
 }
 

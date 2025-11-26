@@ -362,7 +362,7 @@ export default {
 }
 
 .query-modal {
-    background: linear-gradient(to bottom, #ffffff, #fefefe);
+    background: #ffffff;
     border-radius: 24px;
     box-shadow:
         0 0 0 1px rgba(0, 0, 0, 0.05),
@@ -394,11 +394,7 @@ export default {
     align-items: center;
     justify-content: space-between;
     padding: 24px 32px;
-    background: linear-gradient(
-        135deg,
-        rgba(102, 126, 234, 0.05) 0%,
-        rgba(118, 75, 162, 0.05) 100%
-    );
+    background: #f5f5f5;
     border-bottom: 1px solid rgba(0, 0, 0, 0.06);
     flex-shrink: 0;
 }
@@ -439,7 +435,7 @@ export default {
     width: 44px;
     height: 44px;
     border-radius: 12px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #000000;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -498,11 +494,7 @@ export default {
     justify-content: center;
     overflow: auto;
     border-radius: 16px;
-    background: linear-gradient(
-        135deg,
-        rgba(102, 126, 234, 0.03) 0%,
-        rgba(118, 75, 162, 0.03) 100%
-    );
+    background: #ffffff;
     padding: 24px;
 }
 
@@ -520,11 +512,7 @@ export default {
     max-height: 100%;
     border-radius: 12px;
     padding: 8px;
-    background: linear-gradient(
-        135deg,
-        rgba(102, 126, 234, 0.1) 0%,
-        rgba(118, 75, 162, 0.1) 100%
-    );
+    background: #f5f5f5;
     box-shadow:
         0 0 0 1px rgba(102, 126, 234, 0.1),
         0 8px 32px rgba(0, 0, 0, 0.08);
@@ -633,13 +621,13 @@ export default {
 }
 
 .message-user .message-avatar {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    background: #000000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
 .message-ai .message-avatar {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    box-shadow: 0 4px 12px rgba(240, 147, 251, 0.3);
+    background: #cccccc;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
 .message-content {
@@ -659,7 +647,7 @@ export default {
 }
 
 .message-user .message-text {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #000000;
     color: white;
     border-top-left-radius: 4px;
 }
@@ -686,7 +674,7 @@ export default {
 .loading-dots span {
     width: 8px;
     height: 8px;
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    background: #f5576c;
     border-radius: 50%;
     animation: bounce 1.4s infinite ease-in-out both;
 }
@@ -711,9 +699,9 @@ export default {
 }
 
 .input-area {
-    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    border-top: 1px solid #cccccc;
     padding: 16px 24px;
-    background: linear-gradient(to top, rgba(248, 250, 252, 0.8), transparent);
+    background: #ffffff;
 }
 
 .chat-input {
@@ -766,7 +754,7 @@ export default {
     width: 40px;
     height: 40px;
     border: none;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     color: white;
     border-radius: 50%;
     cursor: pointer;
@@ -819,7 +807,7 @@ export default {
     position: absolute;
     inset: 0;
     border-radius: 10px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     opacity: 0;
     transition: opacity 0.2s ease;
 }

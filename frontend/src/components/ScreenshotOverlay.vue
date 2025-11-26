@@ -243,16 +243,8 @@ export default {
                 canvas.height = screenRect.height;
                 const ctx = canvas.getContext("2d");
 
-                // Create a gradient as placeholder
-                const gradient = ctx.createLinearGradient(
-                    0,
-                    0,
-                    canvas.width,
-                    canvas.height,
-                );
-                gradient.addColorStop(0, "#667eea");
-                gradient.addColorStop(1, "#764ba2");
-                ctx.fillStyle = gradient;
+                // Create a solid color as placeholder
+                ctx.fillStyle = "#777777";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
                 // Add text
@@ -355,7 +347,7 @@ export default {
 }
 
 .bg-opacity-10 {
-    background-color: rgba(59, 130, 246, 0.1);
+    background-color: rgba(0, 0, 0, 0.1);
 }
 
 .w-2 {

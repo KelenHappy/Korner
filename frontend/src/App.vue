@@ -1,8 +1,8 @@
 <template>
     <div id="app" class="app-container">
-        <!-- Floating Icon (hidden during screenshot) -->
+        <!-- Floating Icon (hidden during screenshot and when pie menu is open) -->
         <FloatingIcon
-            v-if="!showScreenshotOverlay"
+            v-if="!showScreenshotOverlay && !showPieMenu"
             :icon="settings.floatingIcon"
             @show-menu="showPieMenuAt"
         />
@@ -10,12 +10,13 @@
         <!-- Pie Menu (shown when icon is clicked) -->
         <PieMenu
             :visible="showPieMenu"
-            :center-x="menuCenterX"
-            :center-y="menuCenterY"
+            :click-x="menuCenterX"
+            :click-y="menuCenterY"
             @screenshot="handleScreenshot"
             @ask-question="handleAskQuestion"
             @settings="handleSettings"
             @hide="hidePieMenu"
+            @hide-pet="handleHidePet"
         />
 
         <!-- Screenshot Overlay -->
@@ -51,6 +52,39 @@
         />
     </div>
 </template>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    background: white;
+    overflow: hidden;
+}
+
+#app {
+    width: 100%;
+    height: 100%;
+}
+
+.app-container {
+    width: 100%;
+    height: 100%;
+    background: white;
+    pointer-events: none;
+}
+
+.app-container > * {
+    pointer-events: auto;
+}
+</style>
+
 
 <script>
 import { ref, onMounted, onUnmounted, nextTick } from "vue";
@@ -208,15 +242,7 @@ export default {
                 console.log("Failed to save icon position:", error);
             }
 
-            menuCenterX.value = x;
-            menuCenterY.value = y;
-
-            // 先顯示菜單，再擴大窗口（避免閃爍）
-            showPieMenu.value = true;
-
-            // 延遲擴大窗口
-            await new Promise((resolve) => setTimeout(resolve, 16));
-
+            // 先擴大窗口到 300x300
             try {
                 const newX = iconScreenPos.value.x - 150;
                 const newY = iconScreenPos.value.y - 150;
@@ -225,6 +251,16 @@ export default {
             } catch (error) {
                 console.log("Failed to resize window:", error);
             }
+
+            // 延遲一下，讓窗口大小更新完成
+            await new Promise((resolve) => setTimeout(resolve, 16));
+
+            // 菜單始終顯示在 300x300 窗口的中心
+            menuCenterX.value = 150;
+            menuCenterY.value = 150;
+
+            // 顯示菜單
+            showPieMenu.value = true;
         };
 
         const hidePieMenu = async () => {
@@ -479,6 +515,12 @@ export default {
             await checkAndShrinkWindow();
         };
 
+        const handleHidePet = async () => {
+            // 隱藏菜單
+            await hidePieMenu();
+            // 可以在這裡添加隱藏寵物的邏輯（例如最小化窗口）
+        };
+
         return {
             showPieMenu,
             menuCenterX,
@@ -495,6 +537,7 @@ export default {
             handleScreenshot,
             handleAskQuestion,
             handleSettings,
+            handleHidePet,
             cancelScreenshot,
             handleScreenshotCaptured,
             cancelQueryWindow,
@@ -508,35 +551,3 @@ export default {
     },
 };
 </script>
-
-<style>
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-html,
-body {
-    width: 100%;
-    height: 100%;
-    background: transparent;
-    overflow: hidden;
-}
-
-#app {
-    width: 100%;
-    height: 100%;
-}
-
-.app-container {
-    width: 100%;
-    height: 100%;
-    background: transparent;
-    pointer-events: none;
-}
-
-.app-container > * {
-    pointer-events: auto;
-}
-</style>

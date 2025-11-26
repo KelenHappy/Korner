@@ -7,7 +7,7 @@
             :style="{
                 transform: `translate(${petPosition.x}px, ${petPosition.y}px)`,
             }"
-            @mousedown="startDragPet"
+            @pointerdown="startDragPet"
         >
             <!-- Pet character with logo -->
             <div class="pet-character">
@@ -43,7 +43,7 @@
                     transform: `translate(${chatPosition.x}px, ${chatPosition.y}px)`,
                 }"
             >
-                <div class="bubble-header" @mousedown="startDragChat">
+                <div class="bubble-header" @pointerdown="startDragChat">
                     <span class="bubble-title">💬 Response</span>
                     <button @click="closeChatBubble" class="close-bubble">
                         ✕
@@ -184,6 +184,7 @@ export default {
         let dragStartChatX = 0;
         let dragStartChatY = 0;
 
+
         const toggleMenu = () => {
             showMenu.value = !showMenu.value;
         };
@@ -247,8 +248,8 @@ export default {
             dragStartPetX = petPosition.value.x;
             dragStartPetY = petPosition.value.y;
 
-            document.addEventListener("mousemove", onDragPet);
-            document.addEventListener("mouseup", stopDragPet);
+            document.addEventListener("pointermove", onDragPet, { passive: true });
+            document.addEventListener("pointerup", stopDragPet);
         };
 
         const onDragPet = (e) => {
@@ -257,20 +258,25 @@ export default {
             const deltaX = e.clientX - dragStartX;
             const deltaY = e.clientY - dragStartY;
 
-            petPosition.value.x = Math.max(
-                0,
-                Math.min(dragStartPetX + deltaX, window.innerWidth - 150),
-            );
-            petPosition.value.y = Math.max(
-                0,
-                Math.min(dragStartPetY + deltaY, window.innerHeight - 150),
-            );
+            // Calculate new position without boundary checking first
+            let newX = dragStartPetX + deltaX;
+            let newY = dragStartPetY + deltaY;
+
+            // Apply boundary constraints
+            const petWidth = 150;
+            const petHeight = 150;
+            newX = Math.max(0, Math.min(newX, window.innerWidth - petWidth));
+            newY = Math.max(0, Math.min(newY, window.innerHeight - petHeight));
+
+            // Update position immediately for responsive dragging
+            petPosition.value.x = newX;
+            petPosition.value.y = newY;
         };
 
         const stopDragPet = () => {
             isDraggingPet.value = false;
-            document.removeEventListener("mousemove", onDragPet);
-            document.removeEventListener("mouseup", stopDragPet);
+            document.removeEventListener("pointermove", onDragPet);
+            document.removeEventListener("pointerup", stopDragPet);
         };
 
         // Dragging functions for chat
@@ -281,8 +287,8 @@ export default {
             dragStartChatX = chatPosition.value.x;
             dragStartChatY = chatPosition.value.y;
 
-            document.addEventListener("mousemove", onDragChat);
-            document.addEventListener("mouseup", stopDragChat);
+            document.addEventListener("pointermove", onDragChat, { passive: true });
+            document.addEventListener("pointerup", stopDragChat);
         };
 
         const onDragChat = (e) => {
@@ -291,27 +297,32 @@ export default {
             const deltaX = e.clientX - dragStartX;
             const deltaY = e.clientY - dragStartY;
 
-            chatPosition.value.x = Math.max(
-                0,
-                Math.min(dragStartChatX + deltaX, window.innerWidth - 400),
-            );
-            chatPosition.value.y = Math.max(
-                0,
-                Math.min(dragStartChatY + deltaY, window.innerHeight - 400),
-            );
+            // Calculate new position without boundary checking first
+            let newX = dragStartChatX + deltaX;
+            let newY = dragStartChatY + deltaY;
+
+            // Apply boundary constraints
+            const chatWidth = 400;
+            const chatHeight = 400;
+            newX = Math.max(0, Math.min(newX, window.innerWidth - chatWidth));
+            newY = Math.max(0, Math.min(newY, window.innerHeight - chatHeight));
+
+            // Update position immediately for responsive dragging
+            chatPosition.value.x = newX;
+            chatPosition.value.y = newY;
         };
 
         const stopDragChat = () => {
             isDraggingChat.value = false;
-            document.removeEventListener("mousemove", onDragChat);
-            document.removeEventListener("mouseup", stopDragChat);
+            document.removeEventListener("pointermove", onDragChat);
+            document.removeEventListener("pointerup", stopDragChat);
         };
 
         onUnmounted(() => {
-            document.removeEventListener("mousemove", onDragPet);
-            document.removeEventListener("mouseup", stopDragPet);
-            document.removeEventListener("mousemove", onDragChat);
-            document.removeEventListener("mouseup", stopDragChat);
+            document.removeEventListener("pointermove", onDragPet);
+            document.removeEventListener("pointerup", stopDragPet);
+            document.removeEventListener("pointermove", onDragChat);
+            document.removeEventListener("pointerup", stopDragChat);
         });
 
         return {
@@ -357,11 +368,11 @@ export default {
     cursor: grab;
     user-select: none;
     pointer-events: auto;
-    transition: transform 0.1s ease-out;
+    will-change: transform;
 }
 
 .pet-container.dragging {
-    transition: none;
+    cursor: grabbing;
 }
 
 .pet-container:active {
@@ -416,9 +427,9 @@ export default {
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #000000;
     border: 2px solid white;
-    box-shadow: 0 3px 10px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
     font-size: 16px;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -461,14 +472,14 @@ export default {
 }
 
 .menu-toggle:hover {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #000000;
     color: white;
     transform: scale(1.1) rotate(90deg);
     border-color: transparent;
 }
 
 .menu-toggle.active {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #000000;
     color: white;
     transform: rotate(180deg);
 }
@@ -477,18 +488,14 @@ export default {
 .chat-bubble {
     position: fixed;
     width: 380px;
-    background: rgba(255, 255, 255, 0.98);
-    backdrop-filter: blur(20px);
+    background: #ffffff;
     border-radius: 20px;
     box-shadow: 0 12px 40px rgba(102, 126, 234, 0.4);
     pointer-events: auto;
     overflow: hidden;
     border: 2px solid rgba(102, 126, 234, 0.2);
     z-index: 999;
-}
-
-.chat-bubble.dragging {
-    transition: none;
+    will-change: transform;
 }
 
 .chat-bubble::before {
@@ -500,7 +507,7 @@ export default {
     height: 0;
     border-style: solid;
     border-width: 10px 10px 10px 0;
-    border-color: transparent rgba(255, 255, 255, 0.98) transparent transparent;
+    border-color: transparent rgba(255, 255, 255, 0.1) transparent transparent;
     z-index: -1;
 }
 
@@ -509,7 +516,7 @@ export default {
     align-items: center;
     justify-content: space-between;
     padding: 12px 15px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #000000;
     color: white;
     font-weight: 600;
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
@@ -594,7 +601,7 @@ export default {
 
 .loading-text {
     font-size: 13px;
-    color: #667eea;
+    color: #222222;
     font-weight: 500;
 }
 
@@ -606,7 +613,7 @@ export default {
 .loading-dots span {
     width: 8px;
     height: 8px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     border-radius: 50%;
     animation: bounce 1.4s infinite ease-in-out both;
 }
@@ -643,8 +650,8 @@ export default {
     align-items: center;
     gap: 6px;
     padding: 8px 16px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+    background: #000000;
+    color: #FFFFFF;
     border: none;
     border-radius: 8px;
     cursor: pointer;
@@ -707,13 +714,13 @@ export default {
 }
 
 .menu-item:hover {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #000000;
     color: white;
     transform: translateX(4px);
 }
 
 .menu-item.close:hover {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    background: #f5576c;
 }
 
 .menu-item .icon {
@@ -796,11 +803,11 @@ export default {
 }
 
 .bubble-content::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     border-radius: 10px;
 }
 
 .bubble-content::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    background: #667eea;
 }
 </style>

@@ -1,59 +1,60 @@
 <template>
-    <transition name="pie-menu">
-        <div v-if="visible" class="pie-menu-container">
-            <!-- Pie Menu centered at window center -->
-            <div class="pie-menu-content">
-                <!-- Center circle -->
-                <div class="pie-center" @click="$emit('hide')">
-                    <span class="center-icon">⊕</span>
-                </div>
-
-                <!-- Menu items -->
-                <div class="pie-items">
+    <transition name="pie-container-fade">
+        <div v-if="visible" class="pie-menu-container" @click.self="$emit('hide')">
+            
+            <div 
+                class="pie-menu-content"
+                :style="{ top: clickY + 'px', left: clickX + 'px' }"
+            >
+                <transition-group name="pie-pop" tag="div" class="pie-items">
                     <div
-                        class="pie-item screenshot-item"
-                        :style="getPieItemStyle(0)"
-                        @click="$emit('screenshot')"
+                        key="item0"
+                        class="pie-item photo-theme"
+                        :style="{ ...getPieItemStyle(0), '--delay': '0.05s' }"
+                        @click.stop="$emit('screenshot')"
                         @mouseenter="activeItem = 0"
                         @mouseleave="activeItem = null"
-                        :class="{ active: activeItem === 0 }"
                     >
-                        <div class="pie-item-icon">📸</div>
+                        <span class="pie-icon">📸</span>
+                         <span class="pie-label" v-show="activeItem === 0">拍照</span>
                     </div>
 
                     <div
-                        class="pie-item question-item"
-                        :style="getPieItemStyle(1)"
-                        @click="$emit('ask-question')"
+                        key="item1"
+                        class="pie-item talk-theme"
+                        :style="{ ...getPieItemStyle(1), '--delay': '0.1s' }"
+                        @click.stop="$emit('ask-question')"
                         @mouseenter="activeItem = 1"
                         @mouseleave="activeItem = null"
-                        :class="{ active: activeItem === 1 }"
                     >
-                        <div class="pie-item-icon">💬</div>
+                        <span class="pie-icon">💬</span>
+                        <span class="pie-label" v-show="activeItem === 1">說話</span>
                     </div>
 
                     <div
-                        class="pie-item settings-item"
-                        :style="getPieItemStyle(2)"
-                        @click="$emit('settings')"
+                        key="item2"
+                        class="pie-item settings-theme"
+                        :style="{ ...getPieItemStyle(2), '--delay': '0.15s' }"
+                        @click.stop="$emit('settings')"
                         @mouseenter="activeItem = 2"
                         @mouseleave="activeItem = null"
-                        :class="{ active: activeItem === 2 }"
                     >
-                        <div class="pie-item-icon">⚙️</div>
+                        <span class="pie-icon">⚙️</span>
+                        <span class="pie-label" v-show="activeItem === 2">設定</span>
                     </div>
 
                     <div
-                        class="pie-item hide-item"
-                        :style="getPieItemStyle(3)"
-                        @click="$emit('hide')"
+                        key="item3"
+                        class="pie-item hide-theme"
+                        :style="{ ...getPieItemStyle(3), '--delay': '0.2s' }"
+                        @click.stop="$emit('hide-pet')"
                         @mouseenter="activeItem = 3"
                         @mouseleave="activeItem = null"
-                        :class="{ active: activeItem === 3 }"
                     >
-                        <div class="pie-item-icon">✕</div>
+                        <span class="pie-icon">💤</span>
+                        <span class="pie-label" v-show="activeItem === 3">休息</span>
                     </div>
-                </div>
+                </transition-group>
             </div>
         </div>
     </transition>
@@ -63,35 +64,39 @@
 import { ref } from "vue";
 
 export default {
-    name: "PieMenu",
+    name: "DesktopPetPieMenu",
     props: {
         visible: {
             type: Boolean,
             default: false,
         },
-        centerX: {
+        // 改用點擊座標
+        clickX: {
             type: Number,
-            default: 250,
+            default: 0,
         },
-        centerY: {
+        clickY: {
             type: Number,
-            default: 250,
+            default: 0,
         },
     },
-    emits: ["screenshot", "ask-question", "settings", "hide"],
+    emits: ["screenshot", "ask-question", "settings", "hide", "hide-pet"],
     setup() {
         const activeItem = ref(null);
-        const radius = 50; // 縮小一半
+        // 半徑可以稍微加大一點，讓卡通圖標不那麼擁擠
+        const radius = 40; 
 
         const getPieItemStyle = (index) => {
-            // 4 items in cardinal directions
-            const angle = (index * 360) / 4 - 90; // Start from top
+            const angle = (index * 360) / 4 - 90;
             const radians = (angle * Math.PI) / 180;
+            // 這裡計算的是「最終位置」的偏移量
             const x = Math.cos(radians) * radius;
             const y = Math.sin(radians) * radius;
 
+            // 利用 CSS 變數存儲最終位置，供動畫使用
             return {
-                transform: `translate(${x}px, ${y}px)`,
+                '--end-x': `${x}px`,
+                '--end-y': `${y}px`,
             };
         };
 
@@ -104,160 +109,108 @@ export default {
 </script>
 
 <style scoped>
+/* 容器淡入淡出，不影響內部彈跳 */
 .pie-menu-container {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 10000;
-    pointer-events: none;
-    background: transparent;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    z-index: 9999;
+    background: transparent; /* 桌寵通常不需要背景遮罩 */
 }
+.pie-container-fade-enter-active, .pie-container-fade-leave-active { transition: opacity 0.2s; }
+.pie-container-fade-enter-from, .pie-container-fade-leave-to { opacity: 0; }
 
+
+/* 核心內容定位點，寬高為 0，確保是絕對中心 */
 .pie-menu-content {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-}
-
-.pie-center {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    width: 30px;
-    height: 30px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
-    z-index: 10;
-    pointer-events: auto;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.pie-center:hover {
-    transform: translate(-50%, -50%) scale(1.1);
-}
-
-.center-icon {
-    font-size: 14px;
-    color: white;
-    font-weight: bold;
+    width: 0; height: 0;
+    /* 這裡不需要 transform translate，因為 top/left 已經是精確點擊位置 */
+    pointer-events: none; /* 讓點擊穿透到 items */
 }
 
 .pie-items {
     position: absolute;
-    left: 50%;
-    top: 50%;
-    pointer-events: none;
+    /* 讓 items 的中心點對齊 content 的中心點 */
+    top: 0; left: 0;
+    width: 0; height: 0;
 }
 
+/* --- 卡通化按鈕樣式 --- */
 .pie-item {
     position: absolute;
-    left: -20px;
-    top: -20px;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    /* 讓按鈕中心對齊定位點 */
+    left: -20px; top: -20px; 
+    width: 40px; height: 40px;
     border-radius: 50%;
+    display: flex;
+    align-items: center; justify-content: center;
     cursor: pointer;
     pointer-events: auto;
-    transition: all 0.2s ease;
     user-select: none;
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+
+    /* 桌寵風格：粗邊框、鮮明陰影 */
+    background: #fff;
+    border: 3px solid #4a4a4a;
+    box-shadow: 2px 4px 0px rgba(0,0,0,0.3); 
+    
+    /* 這是最終靜止狀態的位置，從 CSS 變數讀取 */
+    transform: translate(var(--end-x), var(--end-y)) scale(1);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s, box-shadow 0.2s; /* 懸停時的彈性 */
 }
 
-.pie-item:hover,
-.pie-item.active {
-    transform: translate(var(--hover-x, 0), var(--hover-y, 0)) scale(1.2);
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3);
+.pie-icon { font-size: 18px; }
+
+/* Hover 效果：更 Q 彈 */
+.pie-item:hover {
+    transform: translate(var(--end-x), var(--end-y)) scale(1.2) rotate(5deg);
+    box-shadow: 4px 6px 0px rgba(0,0,0,0.4);
+    z-index: 10;
 }
 
-.pie-item-icon {
-    font-size: 20px;
-    transition: transform 0.2s ease;
+/* --- 不同功能的配色主題 (可選) --- */
+.photo-theme:hover { border-color: #ff6b6b; color: #ff6b6b; }
+.talk-theme:hover { border-color: #51cf66; color: #51cf66; }
+.settings-theme:hover { border-color: #339af0; color: #339af0; }
+.hide-theme:hover { border-color: #fcc419; color: #fcc419; }
+
+
+/* --- Hover 文字標籤 --- */
+.pie-label {
+    position: absolute;
+    bottom: -25px; /* 顯示在圓圈下方 */
+    white-space: nowrap;
+    background: rgba(50, 50, 50, 0.9);
+    color: #fff;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+    pointer-events: none;
+    box-shadow: 1px 2px 4px rgba(0,0,0,0.2);
 }
 
-.pie-item:hover .pie-item-icon,
-.pie-item.active .pie-item-icon {
-    transform: scale(1.1);
+/* --- 核心動畫：Q 彈噴射 (Pop Animation) --- */
+/* 進場前狀態：在中心點，縮小為 0 */
+.pie-pop-enter-from {
+    transform: translate(0px, 0px) scale(0.1) !important; /* 強制覆蓋原本的 translate */
+    opacity: 0;
 }
 
-/* Item colors */
-.screenshot-item {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    --hover-x: 0px;
-    --hover-y: -10px;
+/* 進場動畫過程 */
+.pie-pop-enter-active {
+    /* 使用貝茲曲線製造「衝過頭再拉回」的彈性效果 */
+    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease-out;
+    /* 應用 JavaScript 計算出的延遲 */
+    transition-delay: var(--delay);
 }
 
-.screenshot-item .pie-item-label {
-    color: white;
+/* 離場狀態 (可選：讓它們縮回中心，或者直接淡出) */
+.pie-pop-leave-to {
+     transform: translate(0px, 0px) scale(0.1) !important;
+     opacity: 0;
+     transition: transform 0.3s ease-in, opacity 0.2s ease-in;
 }
+/* 離場時取消延遲，一起消失比較俐落 */
+.pie-pop-leave-active { transition-delay: 0s !important; }
 
-.question-item {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    --hover-x: 10px;
-    --hover-y: 0px;
-}
-
-.question-item .pie-item-label {
-    color: white;
-}
-
-.settings-item {
-    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-    --hover-x: 0px;
-    --hover-y: 10px;
-}
-
-.settings-item .pie-item-label {
-    color: white;
-}
-
-.hide-item {
-    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-    --hover-x: -10px;
-    --hover-y: 0px;
-}
-
-.hide-item .pie-item-label {
-    color: #333;
-}
-
-/* Simple Animations */
-.pie-menu-enter-active {
-    animation: pieMenuIn 0.2s ease-out;
-}
-
-.pie-menu-leave-active {
-    animation: pieMenuOut 0.2s ease-in;
-}
-
-@keyframes pieMenuIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
-@keyframes pieMenuOut {
-    from {
-        opacity: 1;
-    }
-    to {
-        opacity: 0;
-    }
-}
 </style>

@@ -245,7 +245,7 @@ export default {
 }
 
 .settings-modal {
-    background: white;
+    background: #ffffff;
     border-radius: 16px;
     box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
     width: 700px;
@@ -274,7 +274,7 @@ export default {
     align-items: center;
     justify-content: space-between;
     padding: 20px 24px;
-    background: #f8f9fa;
+    background: #f5f5f5;
     border-bottom: 1px solid #e2e8f0;
     flex-shrink: 0;
 }
@@ -320,7 +320,7 @@ export default {
     display: flex;
     gap: 4px;
     padding: 16px 16px 0 16px;
-    background: #f8f9fa;
+    background: rgba(248, 249, 250, 0.05);
     border-bottom: 1px solid #e2e8f0;
 }
 
@@ -342,7 +342,7 @@ export default {
 }
 
 .tab-btn.active {
-    background: white;
+    background: #ffffff;
     color: #1e293b;
 }
 
@@ -504,7 +504,7 @@ export default {
 .preview-section {
     margin-top: 24px;
     padding: 20px;
-    background: #f8f9fa;
+    background: #f5f5f5;
     border-radius: 12px;
     display: flex;
     align-items: center;
@@ -535,7 +535,7 @@ export default {
     align-items: center;
     justify-content: space-between;
     padding: 16px 24px;
-    background: #f8f9fa;
+    background: #f5f5f5;
     border-top: 1px solid #e2e8f0;
     flex-shrink: 0;
 }

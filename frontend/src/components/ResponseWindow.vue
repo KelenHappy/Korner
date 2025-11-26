@@ -1,9 +1,11 @@
 <template>
     <div
-        class="response-window bg-white rounded-lg shadow-2xl border border-slate-200 z-50 flex flex-col"
+        class="response-window rounded-lg shadow-2xl border border-slate-200 z-50 flex flex-col"
+        style="background: #ffffff;"
     >
         <div
-            class="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-gradient-to-r from-purple-50 to-pink-50"
+            class="flex items-center justify-between px-4 py-3 border-b border-slate-200"
+            style="background: #000000;"
         >
             <div class="flex items-center space-x-2">
                 <span class="font-semibold text-slate-800">AI Response</span>
