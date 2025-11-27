@@ -4,9 +4,6 @@ Korner is a lightweight Agentic AI desktop assistant that allows users to captur
 
 ## Features
 
-* **Global Hotkey Activation**
-  Trigger Korner anywhere on your system with a customizable shortcut (default `Ctrl+Alt+Q` on Windows, `Cmd+Shift+3` on macOS). The app works in the background and can capture the screen at any time.
-
 * **Region Screenshot Capture**
   Select a specific area of your screen for AI analysis using a transparent overlay and drag-to-select interface.
 
