@@ -1,6 +1,6 @@
 //go:build windows
 
-package main
+package windows
 
 import (
 	"bytes"
@@ -15,11 +15,11 @@ import (
 )
 
 var (
-	procGetDC            = user32Common.NewProc("GetDC")
-	procReleaseDC        = user32Common.NewProc("ReleaseDC")
+	procGetDC            = user32.NewProc("GetDC")
+	procReleaseDC        = user32.NewProc("ReleaseDC")
 	procGetDeviceCaps    = gdi32.NewProc("GetDeviceCaps")
 	procGetDpiForMonitor = shcore.NewProc("GetDpiForMonitor")
-	procMonitorFromPoint = user32Common.NewProc("MonitorFromPoint")
+	procMonitorFromPoint = user32.NewProc("MonitorFromPoint")
 )
 
 const (
@@ -27,47 +27,8 @@ const (
 	LOGPIXELSY = 90
 )
 
-func captureScreenshot(ctx context.Context, x, y, width, height int) (string, error) {
-	return captureScreenshotWindows(ctx, x, y, width, height)
-}
-
-func getDPIScale() float64 {
-	hdc, _, _ := procGetDC.Call(0)
-	if hdc != 0 {
-		defer procReleaseDC.Call(0, hdc)
-
-		dpiX, _, _ := procGetDeviceCaps.Call(hdc, LOGPIXELSX)
-		if dpiX != 0 {
-			scale := float64(dpiX) / 96.0
-			log.Printf("DEBUG: Detected DPI scale: %.2f (DPI: %d)\n", scale, dpiX)
-			return scale
-		}
-	}
-
-	log.Printf("DEBUG: Could not detect DPI scale, using 1.0\n")
-	return 1.0
-}
-
-func getScreenSize() (int, int) {
-	n := screenshot.NumActiveDisplays()
-	if n == 0 {
-		log.Printf("DEBUG: No displays found, using default 1920x1080\n")
-		return 1920, 1080
-	}
-
-	bounds := screenshot.GetDisplayBounds(0)
-	width := bounds.Dx()
-	height := bounds.Dy()
-	log.Printf("DEBUG: Screen size detected: %dx%d\n", width, height)
-	return width, height
-}
-
-func logDPIInfo() {
-	scale := getDPIScale()
-	log.Printf("DEBUG: System DPI Scale: %.2f\n", scale)
-}
-
-func captureScreenshotWindows(ctx context.Context, x, y, width, height int) (string, error) {
+// CaptureScreenshot captures a screenshot of the specified region
+func CaptureScreenshot(ctx context.Context, x, y, width, height int) (string, error) {
 	log.Printf("DEBUG: Capture called: x=%d, y=%d, width=%d, height=%d\n", x, y, width, height)
 
 	n := screenshot.NumActiveDisplays()
@@ -122,4 +83,43 @@ func captureScreenshotWindows(ctx context.Context, x, y, width, height int) (str
 
 	b64 := base64.StdEncoding.EncodeToString(buf.Bytes())
 	return "data:image/png;base64," + b64, nil
+}
+
+// GetDPIScale returns the DPI scaling factor
+func GetDPIScale() float64 {
+	hdc, _, _ := procGetDC.Call(0)
+	if hdc != 0 {
+		defer procReleaseDC.Call(0, hdc)
+
+		dpiX, _, _ := procGetDeviceCaps.Call(hdc, LOGPIXELSX)
+		if dpiX != 0 {
+			scale := float64(dpiX) / 96.0
+			log.Printf("DEBUG: Detected DPI scale: %.2f (DPI: %d)\n", scale, dpiX)
+			return scale
+		}
+	}
+
+	log.Printf("DEBUG: Could not detect DPI scale, using 1.0\n")
+	return 1.0
+}
+
+// GetScreenSize returns the screen dimensions
+func GetScreenSize() (int, int) {
+	n := screenshot.NumActiveDisplays()
+	if n == 0 {
+		log.Printf("DEBUG: No displays found, using default 1920x1080\n")
+		return 1920, 1080
+	}
+
+	bounds := screenshot.GetDisplayBounds(0)
+	width := bounds.Dx()
+	height := bounds.Dy()
+	log.Printf("DEBUG: Screen size detected: %dx%d\n", width, height)
+	return width, height
+}
+
+// LogDPIInfo logs DPI information
+func LogDPIInfo() {
+	scale := GetDPIScale()
+	log.Printf("DEBUG: System DPI Scale: %.2f\n", scale)
 }

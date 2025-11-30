@@ -30,10 +30,6 @@ export function HideWindow() {
   return window['go']['main']['App']['HideWindow']();
 }
 
-export function InitSystemTray() {
-  return window['go']['main']['App']['InitSystemTray']();
-}
-
 export function OpenDevTools() {
   return window['go']['main']['App']['OpenDevTools']();
 }
@@ -44,10 +40,6 @@ export function PositionWindowAt(arg1, arg2) {
 
 export function QueryLLM(arg1, arg2) {
   return window['go']['main']['App']['QueryLLM'](arg1, arg2);
-}
-
-export function RegisterGlobalHotkey() {
-  return window['go']['main']['App']['RegisterGlobalHotkey']();
 }
 
 export function SaveSettings(arg1) {
@@ -64,8 +56,4 @@ export function ShowWindow() {
 
 export function TriggerScreenshot() {
   return window['go']['main']['App']['TriggerScreenshot']();
-}
-
-export function UnregisterGlobalHotkey() {
-  return window['go']['main']['App']['UnregisterGlobalHotkey']();
 }

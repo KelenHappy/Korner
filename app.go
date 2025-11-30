@@ -3,14 +3,15 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"runtime"
 
-	"fmt"
-
+	"github.com/Kelen/Korner/internal/llm"
+	"github.com/Kelen/Korner/internal/platform"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -18,6 +19,7 @@ import (
 type App struct {
 	ctx      context.Context
 	settings *AppSettings
+	platform platform.Platform
 }
 
 // AppSettings stores user configuration
@@ -37,8 +39,8 @@ func NewApp() *App {
 			APIEndpoint:  "",
 			FloatingIcon: "🌸",
 		},
+		platform: platform.New(),
 	}
-	// Load settings from file
 	app.loadSettings()
 	return app
 }
@@ -103,12 +105,10 @@ func (a *App) GetSettings() AppSettings {
 	return *a.settings
 }
 
-// startup is called when the app starts. The context is saved
-// so we can call the runtime methods
+// startup is called when the app starts
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	log.Println("[startup] App context initialized")
-	log.Printf("[startup] Context type: %T", ctx)
 }
 
 // domReady is called after the frontend DOM is ready
@@ -116,13 +116,13 @@ func (a *App) domReady(ctx context.Context) {
 	log.Println("[domReady] Starting...")
 
 	// Log DPI scale for diagnostics
-	logDPIInfo()
+	a.platform.LogDPIInfo()
 
-	// Try to show window explicitly
-	log.Println("[domReady] Attempting to show window...")
+	// Platform-specific initialization
+	initPlatform()
+
+	// Show window
 	wailsruntime.WindowShow(ctx)
-	log.Println("[domReady] WindowShow called")
-
 	log.Println("[domReady] Complete")
 }
 
@@ -166,12 +166,12 @@ func (a *App) PositionWindowAt(x, y int) {
 
 // GetDPIScale returns the current display DPI scaling factor
 func (a *App) GetDPIScale() float64 {
-	return getDPIScale()
+	return a.platform.GetDPIScale()
 }
 
 // GetScreenSize returns the actual physical screen dimensions
 func (a *App) GetScreenSize() (int, int) {
-	return getScreenSize()
+	return a.platform.GetScreenSize()
 }
 
 // CaptureScreenshot captures a screenshot of the specified region
@@ -182,8 +182,8 @@ func (a *App) CaptureScreenshot(x, y, width, height int) (string, error) {
 	}
 
 	winX, winY := wailsruntime.WindowGetPosition(a.ctx)
-	screenWidth, screenHeight := getScreenSize()
-	dpiScale := getDPIScale()
+	screenWidth, screenHeight := a.platform.GetScreenSize()
+	dpiScale := a.platform.GetDPIScale()
 
 	expectedViewportWidth := int(float64(screenWidth) / dpiScale)
 	expectedViewportHeight := int(float64(screenHeight) / dpiScale)
@@ -196,7 +196,7 @@ func (a *App) CaptureScreenshot(x, y, width, height int) (string, error) {
 	screenY := y + winY
 	log.Printf("DEBUG: Screen coords after window offset: (%d, %d, %d, %d)\n", screenX, screenY, width, height)
 
-	return captureScreenshot(ctx, screenX, screenY, width, height)
+	return a.platform.CaptureScreenshot(ctx, screenX, screenY, width, height)
 }
 
 // QueryLLM sends a query with screenshot to the configured LLM provider
@@ -207,48 +207,36 @@ func (a *App) QueryLLM(query string, screenshotBase64 string) (string, error) {
 	}
 
 	log.Printf("[QueryLLM] Starting query with provider: %s", a.settings.APIProvider)
-	log.Printf("[QueryLLM] Query length: %d, Screenshot length: %d", len(query), len(screenshotBase64))
 
 	if a.settings == nil {
-		log.Printf("[QueryLLM] ERROR: settings is nil")
 		return "", fmt.Errorf("Settings not initialized. Please configure your API settings.")
 	}
 
 	if a.settings.APIKey == "" {
-		log.Printf("[QueryLLM] ERROR: API key is empty for provider: %s", a.settings.APIProvider)
 		return "", fmt.Errorf("API key not configured. Please set your API key in Settings.")
 	}
 
-	log.Printf("[QueryLLM] API Key present: %d characters", len(a.settings.APIKey))
-
-	// Route to appropriate provider
 	var result string
 	var err error
 
 	switch a.settings.APIProvider {
 	case "openai":
-		log.Printf("[QueryLLM] Calling OpenAI API...")
-		result, err = QueryOpenAI(ctx, query, screenshotBase64, a.settings.APIKey, "gpt-4-vision-preview")
+		result, err = llm.QueryOpenAI(ctx, query, screenshotBase64, a.settings.APIKey, "gpt-4-vision-preview")
 	case "anthropic":
-		log.Printf("[QueryLLM] Calling Anthropic API...")
-		result, err = QueryAnthropic(ctx, query, screenshotBase64, a.settings.APIKey)
+		result, err = llm.QueryAnthropic(ctx, query, screenshotBase64, a.settings.APIKey)
 	case "gemini":
-		log.Printf("[QueryLLM] Calling Gemini API...")
-		result, err = QueryGemini(ctx, query, screenshotBase64, a.settings.APIKey)
+		result, err = llm.QueryGemini(ctx, query, screenshotBase64, a.settings.APIKey)
 	case "custom":
 		if a.settings.APIEndpoint == "" {
-			log.Printf("[QueryLLM] ERROR: Custom endpoint is empty")
 			return "", fmt.Errorf("custom API endpoint not configured")
 		}
-		log.Printf("[QueryLLM] Calling custom endpoint: %s", a.settings.APIEndpoint)
-		result, err = QueryCustom(ctx, query, screenshotBase64, a.settings.APIKey, a.settings.APIEndpoint)
+		result, err = llm.QueryCustom(ctx, query, screenshotBase64, a.settings.APIKey, a.settings.APIEndpoint)
 	default:
-		log.Printf("[QueryLLM] ERROR: Unsupported provider: %s", a.settings.APIProvider)
 		return "", fmt.Errorf("unsupported API provider: %s", a.settings.APIProvider)
 	}
 
 	if err != nil {
-		log.Printf("[QueryLLM] ERROR from provider: %v", err)
+		log.Printf("[QueryLLM] ERROR: %v", err)
 		return "", err
 	}
 

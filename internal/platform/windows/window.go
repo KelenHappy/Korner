@@ -1,21 +1,18 @@
 //go:build windows
 // +build windows
 
-package main
+package windows
 
 import (
+	"log"
 	"syscall"
 	"unsafe"
 )
 
-// Shared Windows DLL instances
 var (
-	user32Common       = syscall.NewLazyDLL("user32.dll")
-	shcore             = syscall.NewLazyDLL("shcore.dll")
-	gdi32              = syscall.NewLazyDLL("gdi32.dll")
-	procGetWindowLongW = user32Common.NewProc("GetWindowLongW")
-	procSetWindowLongW = user32Common.NewProc("SetWindowLongW")
-	procFindWindowW    = user32Common.NewProc("FindWindowW")
+	procGetWindowLongW = user32.NewProc("GetWindowLongW")
+	procSetWindowLongW = user32.NewProc("SetWindowLongW")
+	procFindWindowW    = user32.NewProc("FindWindowW")
 )
 
 const (
@@ -29,6 +26,7 @@ func DisableWindowSnap(windowTitle string) error {
 	titlePtr, _ := syscall.UTF16PtrFromString(windowTitle)
 	hwnd, _, _ := procFindWindowW.Call(0, uintptr(unsafe.Pointer(titlePtr)))
 	if hwnd == 0 {
+		log.Printf("Window not found: %s", windowTitle)
 		return nil
 	}
 
@@ -39,12 +37,7 @@ func DisableWindowSnap(windowTitle string) error {
 	newStyle := style &^ WS_THICKFRAME &^ WS_MAXIMIZEBOX
 
 	procSetWindowLongW.Call(hwnd, GWL_STYLE, newStyle)
+	log.Printf("Disabled Windows Snap for: %s", windowTitle)
 
 	return nil
-}
-
-
-// disableSnap is called to disable Windows Snap for this app
-func disableSnap() {
-	DisableWindowSnap("Korner - AI Assistant")
 }

@@ -16,15 +16,11 @@ export function GetWindowPosition():Promise<number|number>;
 
 export function HideWindow():Promise<void>;
 
-export function InitSystemTray():Promise<void>;
-
 export function OpenDevTools():Promise<void>;
 
 export function PositionWindowAt(arg1:number,arg2:number):Promise<void>;
 
 export function QueryLLM(arg1:string,arg2:string):Promise<string>;
-
-export function RegisterGlobalHotkey():Promise<void>;
 
 export function SaveSettings(arg1:main.AppSettings):Promise<void>;
 
@@ -33,5 +29,3 @@ export function SetWindowPosition(arg1:number,arg2:number):Promise<void>;
 export function ShowWindow():Promise<void>;
 
 export function TriggerScreenshot():Promise<void>;
-
-export function UnregisterGlobalHotkey():Promise<void>;
