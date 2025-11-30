@@ -67,13 +67,13 @@
                     />
                 </svg>
                 <span class="text-slate-700 font-medium"
-                    >Click and drag to select an area</span
+                    >{{ t("screenshot.selectArea") }}</span
                 >
                 <kbd
                     class="ml-4 px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded border border-slate-300"
-                    >ESC</kbd
+                    >{{ t("common.esc") }}</kbd
                 >
-                <span class="text-slate-500 text-sm">to cancel</span>
+                <span class="text-slate-500 text-sm">{{ t("screenshot.cancel") }}</span>
             </div>
         </div>
     </div>
@@ -81,11 +81,13 @@
 
 <script>
 import { ref, reactive, onMounted, onUnmounted } from "vue";
+import { useI18n } from "vue-i18n";
 
 export default {
     name: "ScreenshotOverlay",
     emits: ["screenshot-captured", "cancel"],
     setup(props, { emit }) {
+        const { t } = useI18n();
         const overlayRef = ref(null);
         const isSelecting = ref(false);
         const startPoint = reactive({ x: 0, y: 0 });
@@ -290,6 +292,7 @@ export default {
         });
 
         return {
+            t,
             overlayRef,
             isSelecting,
             selectionRect,

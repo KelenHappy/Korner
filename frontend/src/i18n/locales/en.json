@@ -1,0 +1,100 @@
+{
+  "app": {
+    "name": "Korner",
+    "description": "AI Screenshot Assistant"
+  },
+  "menu": {
+    "screenshot": "Screenshot",
+    "askQuestion": "Ask",
+    "settings": "Settings",
+    "history": "History",
+    "minimize": "Minimize"
+  },
+  "screenshot": {
+    "selectArea": "Click and drag to select an area",
+    "cancel": "to cancel",
+    "captured": "Screenshot captured"
+  },
+  "query": {
+    "title": "AI Chat",
+    "placeholder": "Type your message...",
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "noScreenshot": "No screenshot available",
+    "clearChat": "Clear chat",
+    "clearConfirm": "Are you sure you want to clear the chat history?",
+    "emptyChat": "Start a conversation about this screenshot",
+    "promptExplain": "Explain this",
+    "promptWrong": "What's wrong?",
+    "promptSummarize": "Summarize",
+    "promptTranslate": "Translate",
+    "promptImprove": "Improve this",
+    "promptBugs": "Find bugs",
+    "charCount": "characters"
+  },
+  "response": {
+    "title": "AI Response",
+    "loading": "Thinking...",
+    "close": "Close",
+    "empty": "Response will appear here",
+    "copy": "Copy",
+    "pin": "Pin"
+  },
+  "settings": {
+    "title": "Settings",
+    "api": "AI API Configuration",
+    "provider": "API Provider",
+    "apiKey": "API Key",
+    "endpoint": "API Endpoint",
+    "icon": "Floating Icon",
+    "chooseIcon": "Choose Icon",
+    "customIcon": "Custom Icon (Emoji)",
+    "language": "Select Language",
+    "save": "Save Changes",
+    "cancel": "Cancel",
+    "reset": "Reset to Defaults",
+    "resetConfirm": "Are you sure you want to reset all settings to defaults?",
+    "saved": "Settings saved successfully",
+    "endpointHint": "Using AMD GPT-OSS-120B model, no API key required",
+    "providerDisabled": "This API provider is disabled",
+    "endpoint1": "Endpoint 1 (Recommended)",
+    "endpoint2": "Endpoint 2 (Backup)",
+    "showApiKey": "Show",
+    "hideApiKey": "Hide",
+    "preview": "Preview"
+  },
+  "history": {
+    "title": "Conversation History",
+    "export": "Export",
+    "clear": "Clear",
+    "all": "All",
+    "today": "Today",
+    "recent": "Recent 10",
+    "question": "Q:",
+    "answer": "A:",
+    "screenshot": "Screenshot:",
+    "empty": "No conversation history",
+    "deleteConfirm": "Are you sure you want to delete this record?",
+    "clearConfirm": "Are you sure you want to clear all history? This cannot be undone!",
+    "exportSuccess": "History exported to:",
+    "exportFailed": "Export failed:",
+    "deleteFailed": "Delete failed:",
+    "clearFailed": "Clear failed:"
+  },
+  "common": {
+    "close": "Close",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "esc": "ESC"
+  },
+  "tabs": {
+    "api": "API",
+    "icon": "Icon",
+    "language": "Language"
+  }
+}

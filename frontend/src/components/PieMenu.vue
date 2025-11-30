@@ -17,7 +17,7 @@
                         @mouseleave="activeItem = null"
                     >
                         <span class="pie-icon">💤</span>
-                        <span class="pie-label" v-show="activeItem === 3">休息</span>
+                        <span class="pie-label" v-show="activeItem === 3">{{ t('menu.minimize') }}</span>
                     </div>
 
                     <div
@@ -30,7 +30,7 @@
                         @mouseleave="activeItem = null"
                     >
                         <span class="pie-icon">📸</span>
-                        <span class="pie-label" v-show="activeItem === 0">拍照</span>
+                        <span class="pie-label" v-show="activeItem === 0">{{ t('menu.screenshot') }}</span>
                     </div>
 
                     <div
@@ -43,7 +43,7 @@
                         @mouseleave="activeItem = null"
                     >
                         <span class="pie-icon">💬</span>
-                        <span class="pie-label" v-show="activeItem === 1">說話</span>
+                        <span class="pie-label" v-show="activeItem === 1">{{ t('menu.askQuestion') }}</span>
                     </div>
 
                     <div
@@ -56,7 +56,20 @@
                         @mouseleave="activeItem = null"
                     >
                         <span class="pie-icon">⚙️</span>
-                        <span class="pie-label" v-show="activeItem === 2">設定</span>
+                        <span class="pie-label" v-show="activeItem === 2">{{ t('menu.settings') }}</span>
+                    </div>
+
+                    <div
+                        v-if="showItems"
+                        key="item4"
+                        class="pie-item history-theme"
+                        :style="{ '--delay': '0.25s' }"
+                        @click.stop="$emit('history')"
+                        @mouseenter="activeItem = 4"
+                        @mouseleave="activeItem = null"
+                    >
+                        <span class="pie-icon">📜</span>
+                        <span class="pie-label" v-show="activeItem === 4">{{ t('menu.history') }}</span>
                     </div>
                 </transition-group>
             </div>
@@ -66,6 +79,7 @@
 
 <script>
 import { ref, computed, watch } from "vue";
+import { useI18n } from "vue-i18n";
 
 export default {
     name: "DesktopPetPieMenu",
@@ -93,8 +107,9 @@ export default {
             default: 0,
         },
     },
-    emits: ["screenshot", "ask-question", "settings", "hide", "hide-pet"],
-    setup(props) {
+    emits: ["screenshot", "ask-question", "settings", "history", "hide", "hide-pet"],
+    setup(props, { emit }) {
+        const { t } = useI18n();
         const activeItem = ref(null);
         const isClosing = ref(false);
         const showItems = ref(false);
@@ -133,11 +148,18 @@ export default {
             }
         });
 
+        const handleSettingsClick = () => {
+            console.log("[Korner][PieMenu] Settings clicked");
+            emit('settings');
+        };
+
         return {
+            t,
             activeItem,
             isClosing,
             showItems,
             contentStyle,
+            handleSettingsClick,
         };
     },
 };
@@ -210,6 +232,7 @@ export default {
 .photo-theme:hover { border-color: #ff6b6b; color: #ff6b6b; }
 .talk-theme:hover { border-color: #51cf66; color: #51cf66; }
 .settings-theme:hover { border-color: #339af0; color: #339af0; }
+.history-theme:hover { border-color: #9775fa; color: #9775fa; }
 .hide-theme:hover { border-color: #fcc419; color: #fcc419; }
 
 

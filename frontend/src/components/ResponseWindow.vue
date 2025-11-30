@@ -8,34 +8,34 @@
             style="background: #000000;"
         >
             <div class="flex items-center space-x-2">
-                <span class="font-semibold text-slate-800">AI Response</span>
+                <span class="font-semibold text-slate-800">{{ t("response.title") }}</span>
             </div>
             <div class="flex items-center space-x-1">
                 <button
                     @click="copyResponse"
                     class="p-1.5 hover:bg-white rounded"
-                    title="Copy"
+                    :title="t('response.copy')"
                 >
-                    Copy
+                    {{ t("response.copy") }}
                 </button>
                 <button
                     @click="pinResponse"
                     class="p-1.5 hover:bg-white rounded"
-                    title="Pin"
+                    :title="t('response.pin')"
                 >
-                    Pin
+                    {{ t("response.pin") }}
                 </button>
                 <button
                     @click="close"
                     class="p-1.5 hover:bg-white rounded"
-                    title="Close"
+                    :title="t('response.close')"
                 >
                     ×
                 </button>
             </div>
         </div>
         <div class="flex-1 overflow-auto p-4">
-            <div v-if="loading">Loading...</div>
+            <div v-if="loading">{{ t("response.loading") }}</div>
             <div v-else>
                 <div v-if="screenshot" class="mb-4">
                     <img
@@ -52,16 +52,19 @@
     </div>
 </template>
 <script>
+import { useI18n } from "vue-i18n";
+
 export default {
     name: "ResponseWindow",
     props: { response: String, loading: Boolean, screenshot: String },
     emits: ["close", "pin"],
     setup(props, { emit }) {
+        const { t } = useI18n();
         const close = () => emit("close");
         const pinResponse = () => emit("pin");
         const copyResponse = () =>
             navigator.clipboard.writeText(props.response);
-        return { close, pinResponse, copyResponse };
+        return { t, close, pinResponse, copyResponse };
     },
 };
 </script>

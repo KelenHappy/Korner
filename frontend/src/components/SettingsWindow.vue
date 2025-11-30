@@ -3,8 +3,8 @@
         <div class="settings-modal">
             <!-- Header -->
             <div class="modal-header">
-                <h2 class="modal-title">⚙️ Settings</h2>
-                <button @click="close" class="close-btn" title="Close">
+                <h2 class="modal-title">⚙️ {{ t("settings.title") }}</h2>
+                <button @click="close" class="close-btn" :title="t('settings.cancel')">
                     ✕
                 </button>
             </div>
@@ -27,10 +27,10 @@
                 <div class="tab-content">
                     <!-- API Settings Tab -->
                     <div v-if="activeTab === 'api'" class="tab-panel">
-                        <h3 class="section-title">AI API Configuration</h3>
+                        <h3 class="section-title">{{ t("settings.api") }}</h3>
 
                         <div class="form-group">
-                            <label class="form-label">API Provider</label>
+                            <label class="form-label">{{ t("settings.provider") }}</label>
                             <select
                                 v-model="settings.apiProvider"
                                 class="form-select"
@@ -44,19 +44,19 @@
                         </div>
 
                         <div class="form-group" v-if="settings.apiProvider === 'gptoss'">
-                            <label class="form-label">API Endpoint</label>
+                            <label class="form-label">{{ t("settings.endpoint") }}</label>
                             <select
                                 v-model="settings.apiEndpoint"
                                 class="form-select"
                             >
-                                <option value="http://210.61.209.139:45014/v1/">端點 1 (推薦)</option>
-                                <option value="http://210.61.209.139:45005/v1/">端點 2 (備用)</option>
+                                <option value="http://210.61.209.139:45014/v1/">{{ t("settings.endpoint1") }}</option>
+                                <option value="http://210.61.209.139:45005/v1/">{{ t("settings.endpoint2") }}</option>
                             </select>
-                            <p class="form-hint">使用 AMD GPT-OSS-120B 模型，無需 API Key</p>
+                            <p class="form-hint">{{ t("settings.endpointHint") }}</p>
                         </div>
 
                         <div class="form-group" v-if="settings.apiProvider !== 'gptoss'">
-                            <label class="form-label">API Key</label>
+                            <label class="form-label">{{ t("settings.apiKey") }}</label>
                             <div class="input-with-icon">
                                 <input
                                     v-model="settings.apiKey"
@@ -74,16 +74,16 @@
                                     {{ showApiKey ? "🙈" : "👁️" }}
                                 </button>
                             </div>
-                            <p class="form-hint">此 API 提供商已停用</p>
+                            <p class="form-hint">{{ t("settings.providerDisabled") }}</p>
                         </div>
                     </div>
 
                     <!-- Icon Settings Tab -->
                     <div v-if="activeTab === 'icon'" class="tab-panel">
-                        <h3 class="section-title">Floating Icon</h3>
+                        <h3 class="section-title">{{ t("settings.icon") }}</h3>
 
                         <div class="form-group">
-                            <label class="form-label">Choose Icon</label>
+                            <label class="form-label">{{ t("settings.chooseIcon") }}</label>
                             <div class="icon-grid">
                                 <button
                                     v-for="icon in availableIcons"
@@ -104,21 +104,44 @@
 
                         <div class="form-group">
                             <label class="form-label"
-                                >Custom Icon (Emoji)</label
+                                >{{ t("settings.customIcon") }}</label
                             >
                             <input
                                 v-model="settings.floatingIcon"
                                 type="text"
                                 class="form-input"
-                                placeholder="Enter any emoji..."
+                                :placeholder="t('settings.customIcon') + '...'"
                                 maxlength="2"
                             />
                         </div>
 
                         <div class="preview-section">
-                            <div class="preview-label">Preview:</div>
+                            <div class="preview-label">{{ t("settings.preview") }}:</div>
                             <div class="icon-preview">
                                 {{ settings.floatingIcon }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Language Settings Tab -->
+                    <div v-if="activeTab === 'language'" class="tab-panel">
+                        <h3 class="section-title">Language / 語言</h3>
+
+                        <div class="form-group">
+                            <label class="form-label">{{ t("settings.language") }}</label>
+                            <div class="language-options">
+                                <button
+                                    @click="changeLanguage('en')"
+                                    :class="['lang-btn', { active: currentLocale === 'en' }]"
+                                >
+                                    🇺🇸 English
+                                </button>
+                                <button
+                                    @click="changeLanguage('zh-TW')"
+                                    :class="['lang-btn', { active: currentLocale === 'zh-TW' }]"
+                                >
+                                    🇹🇼 繁體中文
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -128,12 +151,12 @@
             <!-- Footer -->
             <div class="modal-footer">
                 <button @click="resetToDefaults" class="btn-secondary">
-                    Reset to Defaults
+                    {{ t("settings.reset") }}
                 </button>
                 <div class="footer-right">
-                    <button @click="close" class="btn-cancel">Cancel</button>
+                    <button @click="close" class="btn-cancel">{{ t("settings.cancel") }}</button>
                     <button @click="save" class="btn-save">
-                        💾 Save Changes
+                        💾 {{ t("settings.save") }}
                     </button>
                 </div>
             </div>
@@ -142,7 +165,8 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted } from "vue";
+import { ref, reactive, onMounted, computed } from "vue";
+import { useI18n } from "vue-i18n";
 
 export default {
     name: "SettingsWindow",
@@ -154,13 +178,17 @@ export default {
     },
     emits: ["close", "save"],
     setup(props, { emit }) {
+        const { t, locale } = useI18n();
+        const currentLocale = computed(() => locale.value);
+        
         const activeTab = ref("api");
         const showApiKey = ref(false);
 
-        const tabs = [
-            { id: "api", name: "API", icon: "🤖" },
-            { id: "icon", name: "Icon", icon: "🎨" },
-        ];
+        const tabs = computed(() => [
+            { id: "api", name: t("tabs.api"), icon: "🤖" },
+            { id: "icon", name: t("tabs.icon"), icon: "🎨" },
+            { id: "language", name: t("tabs.language"), icon: "🌐" },
+        ]);
 
         const availableIcons = [
             "🌸",
@@ -194,11 +222,7 @@ export default {
         });
 
         const resetToDefaults = () => {
-            if (
-                confirm(
-                    "Are you sure you want to reset all settings to defaults?",
-                )
-            ) {
+            if (confirm(t("settings.resetConfirm"))) {
                 Object.assign(settings, defaultSettings);
             }
         };
@@ -211,12 +235,24 @@ export default {
             emit("close");
         };
 
+        const changeLanguage = (lang) => {
+            locale.value = lang;
+            try {
+                localStorage.setItem('korner-language', lang);
+            } catch (e) {
+                console.log('[Settings] Failed to save language:', e);
+            }
+        };
+
         return {
+            t,
             activeTab,
             showApiKey,
             tabs,
             availableIcons,
             settings,
+            currentLocale,
+            changeLanguage,
             resetToDefaults,
             save,
             close,
@@ -540,6 +576,47 @@ export default {
     justify-content: center;
     font-size: 30px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.language-options {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.lang-btn {
+    flex: 1;
+    padding: 16px 24px;
+    border: 2px solid #e2e8f0;
+    background: white;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.lang-btn:hover {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.lang-btn.active {
+    border-color: #000;
+    background: #000;
+    color: white;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.lang-btn.active:hover {
+    background: #1a1a1a;
+    border-color: #1a1a1a;
 }
 
 /* Footer */

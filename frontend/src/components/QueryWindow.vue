@@ -7,14 +7,14 @@
                     <div class="icon-wrapper">
                         <span class="header-icon">✨</span>
                     </div>
-                    <h2 class="modal-title">AI Chat</h2>
+                    <h2 class="modal-title">{{ t("query.title") }}</h2>
                 </div>
                 <div class="header-actions">
                     <button
                         v-if="messages.length > 0"
                         @click="clearChat"
                         class="clear-btn"
-                        title="Clear chat"
+                        :title="t('query.clearChat')"
                     >
                         <svg
                             width="18"
@@ -31,7 +31,7 @@
                             />
                         </svg>
                     </button>
-                    <button @click="cancel" class="close-btn" title="Close">
+                    <button @click="cancel" class="close-btn" :title="t('query.cancel')">
                         <svg
                             width="20"
                             height="20"
@@ -93,7 +93,7 @@
                                 />
                             </svg>
                         </div>
-                        <p class="placeholder-text">No screenshot available</p>
+                        <p class="placeholder-text">{{ t("query.noScreenshot") }}</p>
                     </div>
                 </div>
 
@@ -104,7 +104,7 @@
                         <div v-if="messages.length === 0" class="empty-state">
                             <div class="empty-icon">💭</div>
                             <p class="empty-text">
-                                Start a conversation about this screenshot
+                                {{ t("query.emptyChat") }}
                             </p>
                             <div class="prompts-grid">
                                 <button
@@ -166,12 +166,12 @@
                             @keydown.meta.enter="submit"
                             class="chat-input"
                             rows="3"
-                            placeholder="Type your message..."
+                            :placeholder="t('query.placeholder')"
                             :disabled="isLoading"
                         ></textarea>
                         <div class="input-actions">
                             <span class="char-count"
-                                >{{ queryText.length }} / 1000</span
+                                >{{ queryText.length }} / 1000 {{ t("query.charCount") }}</span
                             >
                             <button
                                 @click="submit"
@@ -200,6 +200,7 @@
 
 <script>
 import { ref, computed, watch, onMounted, nextTick } from "vue";
+import { useI18n } from "vue-i18n";
 
 export default {
     name: "QueryWindow",
@@ -211,19 +212,20 @@ export default {
     },
     emits: ["submit", "cancel"],
     setup(props, { emit }) {
+        const { t } = useI18n();
         const queryText = ref("");
         const messages = ref([]);
         const isLoading = ref(false);
         const messagesContainer = ref(null);
 
-        const quickPrompts = [
-            "Explain this",
-            "What's wrong?",
-            "Summarize",
-            "Translate",
-            "Improve this",
-            "Find bugs",
-        ];
+        const quickPrompts = computed(() => [
+            t("query.promptExplain"),
+            t("query.promptWrong"),
+            t("query.promptSummarize"),
+            t("query.promptTranslate"),
+            t("query.promptImprove"),
+            t("query.promptBugs"),
+        ]);
 
         const hasScreenshot = computed(() => {
             return (
@@ -309,7 +311,7 @@ export default {
         };
 
         const clearChat = () => {
-            if (confirm("Are you sure you want to clear the chat history?")) {
+            if (confirm(t("query.clearConfirm"))) {
                 messages.value = [];
             }
         };
@@ -322,6 +324,7 @@ export default {
         };
 
         return {
+            t,
             queryText,
             messages,
             isLoading,
