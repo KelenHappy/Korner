@@ -9,7 +9,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
+	"github.com/Kelen/Korner/internal/history"
 	"github.com/Kelen/Korner/internal/llm"
 	"github.com/Kelen/Korner/internal/platform"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -20,6 +22,7 @@ type App struct {
 	ctx      context.Context
 	settings *AppSettings
 	platform platform.Platform
+	history  *history.Manager
 }
 
 // AppSettings stores user configuration
@@ -32,6 +35,11 @@ type AppSettings struct {
 
 // NewApp creates a new App application struct
 func NewApp() *App {
+	historyMgr, err := history.NewManager()
+	if err != nil {
+		log.Printf("Warning: failed to initialize history manager: %v", err)
+	}
+
 	app := &App{
 		settings: &AppSettings{
 			APIProvider:  "gptoss", // 默認使用 GPT-OSS-120B
@@ -40,6 +48,7 @@ func NewApp() *App {
 			FloatingIcon: "🌸",
 		},
 		platform: platform.New(),
+		history:  historyMgr,
 	}
 	app.loadSettings()
 	return app
@@ -224,6 +233,7 @@ func (a *App) QueryLLM(query string, screenshotBase64 string) (string, error) {
 
 	var result string
 	var err error
+	var model string
 
 	switch a.settings.APIProvider {
 	case "gptoss":
@@ -232,17 +242,22 @@ func (a *App) QueryLLM(query string, screenshotBase64 string) (string, error) {
 		if endpoint == "" {
 			endpoint = "http://210.61.209.139:45014/v1/"
 		}
+		model = "gpt-oss-120b"
 		result, err = llm.QueryGPTOSS(ctx, query, screenshotBase64, a.settings.APIKey, endpoint)
 	case "openai":
-		result, err = llm.QueryOpenAI(ctx, query, screenshotBase64, a.settings.APIKey, "gpt-4-vision-preview")
+		model = "gpt-4-vision-preview"
+		result, err = llm.QueryOpenAI(ctx, query, screenshotBase64, a.settings.APIKey, model)
 	case "anthropic":
+		model = "claude-3-5-sonnet"
 		result, err = llm.QueryAnthropic(ctx, query, screenshotBase64, a.settings.APIKey)
 	case "gemini":
+		model = "gemini-2.0-flash-lite"
 		result, err = llm.QueryGemini(ctx, query, screenshotBase64, a.settings.APIKey)
 	case "custom":
 		if a.settings.APIEndpoint == "" {
 			return "", fmt.Errorf("custom API endpoint not configured")
 		}
+		model = "custom"
 		result, err = llm.QueryCustom(ctx, query, screenshotBase64, a.settings.APIKey, a.settings.APIEndpoint)
 	default:
 		return "", fmt.Errorf("unsupported API provider: %s", a.settings.APIProvider)
@@ -254,10 +269,75 @@ func (a *App) QueryLLM(query string, screenshotBase64 string) (string, error) {
 	}
 
 	log.Printf("[QueryLLM] Success! Response length: %d", len(result))
+
+	// Save to history
+	if a.history != nil {
+		screenshotPath, _ := getLastScreenshotPath()
+		conv := history.Conversation{
+			Timestamp:      time.Now(),
+			Question:       query,
+			Answer:         result,
+			ScreenshotPath: screenshotPath,
+			Provider:       a.settings.APIProvider,
+			Model:          model,
+		}
+		if err := a.history.Save(conv); err != nil {
+			log.Printf("Warning: failed to save conversation to history: %v", err)
+		}
+	}
+
 	return result, nil
 }
 
 // OpenDevTools opens the developer tools window
 func (a *App) OpenDevTools() {
 	wailsruntime.WindowShow(a.ctx)
+}
+
+// GetRecentHistory returns the most recent N conversations
+func (a *App) GetRecentHistory(limit int) ([]history.Conversation, error) {
+	if a.history == nil {
+		return nil, fmt.Errorf("history manager not initialized")
+	}
+	return a.history.GetRecent(limit)
+}
+
+// GetTodayHistory returns all conversations from today
+func (a *App) GetTodayHistory() ([]history.Conversation, error) {
+	if a.history == nil {
+		return nil, fmt.Errorf("history manager not initialized")
+	}
+	return a.history.GetToday()
+}
+
+// GetAllHistory returns all conversations
+func (a *App) GetAllHistory() ([]history.Conversation, error) {
+	if a.history == nil {
+		return nil, fmt.Errorf("history manager not initialized")
+	}
+	return a.history.GetAll()
+}
+
+// DeleteHistoryItem deletes a conversation by ID
+func (a *App) DeleteHistoryItem(id string) error {
+	if a.history == nil {
+		return fmt.Errorf("history manager not initialized")
+	}
+	return a.history.Delete(id)
+}
+
+// ClearHistory deletes all history
+func (a *App) ClearHistory() error {
+	if a.history == nil {
+		return fmt.Errorf("history manager not initialized")
+	}
+	return a.history.Clear()
+}
+
+// ExportHistoryToText exports all conversations to a text file
+func (a *App) ExportHistoryToText(outputPath string) error {
+	if a.history == nil {
+		return fmt.Errorf("history manager not initialized")
+	}
+	return a.history.ExportToText(outputPath)
 }

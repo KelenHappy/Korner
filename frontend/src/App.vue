@@ -17,6 +17,7 @@
             @screenshot="handleScreenshot"
             @ask-question="handleAskQuestion"
             @settings="handleSettings"
+            @history="handleHistory"
             @hide="hidePieMenu"
             @hide-pet="handleHidePet"
         />
@@ -52,6 +53,9 @@
             @close="closeSettings"
             @save="saveSettings"
         />
+
+        <!-- History Window -->
+        <HistoryWindow v-if="showHistoryWindow" @close="closeHistory" />
     </div>
 </template>
 
@@ -97,6 +101,7 @@ import ScreenshotOverlay from "./components/ScreenshotOverlay.vue";
 import QueryWindow from "./components/QueryWindow.vue";
 import ResponseWindow from "./components/ResponseWindow.vue";
 import SettingsWindow from "./components/SettingsWindow.vue";
+import HistoryWindow from "./components/HistoryWindow.vue";
 
 import {
     WindowSetAlwaysOnTop,
@@ -120,6 +125,7 @@ export default {
         QueryWindow,
         ResponseWindow,
         SettingsWindow,
+        HistoryWindow,
     },
     setup() {
         const showPieMenu = ref(false);
@@ -129,6 +135,7 @@ export default {
         const showQueryWindow = ref(false);
         const showResponseWindow = ref(false);
         const showSettingsWindow = ref(false);
+        const showHistoryWindow = ref(false);
         const currentQuery = ref(null);
         const latestResponse = ref("");
         const isLoadingResponse = ref(false);
@@ -223,6 +230,8 @@ export default {
                     closeResponseWindow();
                 } else if (showSettingsWindow.value) {
                     closeSettings();
+                } else if (showHistoryWindow.value) {
+                    closeHistory();
                 }
             }
         };
@@ -294,7 +303,8 @@ export default {
                 !showScreenshotOverlay.value &&
                 !showQueryWindow.value &&
                 !showResponseWindow.value &&
-                !showSettingsWindow.value
+                !showSettingsWindow.value &&
+                !showHistoryWindow.value
             ) {
                 try {
                     WindowSetSize(100, 100);
@@ -356,6 +366,7 @@ export default {
         };
 
         const handleSettings = async () => {
+            console.log("[Korner] handleSettings called");
             await hidePieMenu();
 
             // 調整視窗大小並置中
@@ -367,11 +378,33 @@ export default {
                 console.log("Failed to resize/center window:", error);
             }
 
+            console.log("[Korner] Setting showSettingsWindow to true");
             showSettingsWindow.value = true;
         };
 
         const closeSettings = async () => {
             showSettingsWindow.value = false;
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            await checkAndShrinkWindow();
+        };
+
+        const handleHistory = async () => {
+            await hidePieMenu();
+
+            // 調整視窗大小並置中
+            try {
+                WindowSetSize(900, 700);
+                await new Promise((resolve) => setTimeout(resolve, 100));
+                WindowCenter();
+            } catch (error) {
+                console.log("Failed to resize/center window:", error);
+            }
+
+            showHistoryWindow.value = true;
+        };
+
+        const closeHistory = async () => {
+            showHistoryWindow.value = false;
             await new Promise((resolve) => setTimeout(resolve, 100));
             await checkAndShrinkWindow();
         };
@@ -551,6 +584,9 @@ export default {
             settings,
             closeSettings,
             saveSettings,
+            showHistoryWindow,
+            handleHistory,
+            closeHistory,
         };
     },
 };

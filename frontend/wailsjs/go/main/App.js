@@ -6,6 +6,22 @@ export function CaptureScreenshot(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['CaptureScreenshot'](arg1, arg2, arg3, arg4);
 }
 
+export function ClearHistory() {
+  return window['go']['main']['App']['ClearHistory']();
+}
+
+export function DeleteHistoryItem(arg1) {
+  return window['go']['main']['App']['DeleteHistoryItem'](arg1);
+}
+
+export function ExportHistoryToText(arg1) {
+  return window['go']['main']['App']['ExportHistoryToText'](arg1);
+}
+
+export function GetAllHistory() {
+  return window['go']['main']['App']['GetAllHistory']();
+}
+
 export function GetDPIScale() {
   return window['go']['main']['App']['GetDPIScale']();
 }
@@ -18,12 +34,20 @@ export function GetPlatform() {
   return window['go']['main']['App']['GetPlatform']();
 }
 
+export function GetRecentHistory(arg1) {
+  return window['go']['main']['App']['GetRecentHistory'](arg1);
+}
+
 export function GetScreenSize() {
   return window['go']['main']['App']['GetScreenSize']();
 }
 
 export function GetSettings() {
   return window['go']['main']['App']['GetSettings']();
+}
+
+export function GetTodayHistory() {
+  return window['go']['main']['App']['GetTodayHistory']();
 }
 
 export function GetWindowPosition() {

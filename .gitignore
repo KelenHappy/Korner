@@ -79,3 +79,7 @@ screenshots/
 nul
 korner.log
 
+# History
+build/bin/history/
+history/
+
