@@ -29,12 +29,12 @@
             @cancel="cancelScreenshot"
         />
 
-        <!-- Query Window Modal -->
-        <QueryWindow
-            v-if="showQueryWindow && currentQuery"
+        <!-- Chat Window Modal -->
+        <ChatWindow
+            v-if="showChatWindow && currentQuery"
             :screenshot="currentQuery.screenshot"
             @submit="handleQuerySubmit"
-            @cancel="cancelQueryWindow"
+            @cancel="cancelChatWindow"
         />
 
         <!-- Response Window -->
@@ -98,7 +98,7 @@ import { ref, onMounted, onUnmounted, nextTick } from "vue";
 import FloatingIcon from "./components/FloatingIcon.vue";
 import PieMenu from "./components/PieMenu.vue";
 import ScreenshotOverlay from "./components/ScreenshotOverlay.vue";
-import QueryWindow from "./components/QueryWindow.vue";
+import ChatWindow from "./components/ChatWindow.vue";
 import ResponseWindow from "./components/ResponseWindow.vue";
 import SettingsWindow from "./components/SettingsWindow.vue";
 import HistoryWindow from "./components/HistoryWindow.vue";
@@ -122,7 +122,7 @@ export default {
         FloatingIcon,
         PieMenu,
         ScreenshotOverlay,
-        QueryWindow,
+        ChatWindow,
         ResponseWindow,
         SettingsWindow,
         HistoryWindow,
@@ -132,7 +132,7 @@ export default {
         const menuCenterX = ref(250);
         const menuCenterY = ref(250);
         const showScreenshotOverlay = ref(false);
-        const showQueryWindow = ref(false);
+        const showChatWindow = ref(false);
         const showResponseWindow = ref(false);
         const showSettingsWindow = ref(false);
         const showHistoryWindow = ref(false);
@@ -224,8 +224,8 @@ export default {
                     hidePieMenu();
                 } else if (showScreenshotOverlay.value) {
                     cancelScreenshot();
-                } else if (showQueryWindow.value) {
-                    cancelQueryWindow();
+                } else if (showChatWindow.value) {
+                    cancelChatWindow();
                 } else if (showResponseWindow.value) {
                     closeResponseWindow();
                 } else if (showSettingsWindow.value) {
@@ -301,7 +301,7 @@ export default {
             if (
                 !showPieMenu.value &&
                 !showScreenshotOverlay.value &&
-                !showQueryWindow.value &&
+                !showChatWindow.value &&
                 !showResponseWindow.value &&
                 !showSettingsWindow.value &&
                 !showHistoryWindow.value
@@ -362,7 +362,7 @@ export default {
                 screenshot: null,
                 timestamp: new Date(),
             };
-            showQueryWindow.value = true;
+            showChatWindow.value = true;
         };
 
         const handleSettings = async () => {
@@ -477,13 +477,13 @@ export default {
 
             beforeScreenshotState.value = null;
 
-            // 顯示查詢窗口
+            // 顯示聊天窗口
             await new Promise((resolve) => setTimeout(resolve, 50));
-            showQueryWindow.value = true;
+            showChatWindow.value = true;
         };
 
-        const cancelQueryWindow = async () => {
-            showQueryWindow.value = false;
+        const cancelChatWindow = async () => {
+            showChatWindow.value = false;
             currentQuery.value = null;
             await new Promise((resolve) => setTimeout(resolve, 100));
             await checkAndShrinkWindow();
@@ -563,7 +563,7 @@ export default {
             menuCenterX,
             menuCenterY,
             showScreenshotOverlay,
-            showQueryWindow,
+            showChatWindow,
             showResponseWindow,
             currentQuery,
             latestResponse,
@@ -577,7 +577,7 @@ export default {
             handleHidePet,
             cancelScreenshot,
             handleScreenshotCaptured,
-            cancelQueryWindow,
+            cancelChatWindow,
             handleQuerySubmit,
             closeResponseWindow,
             showSettingsWindow,

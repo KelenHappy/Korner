@@ -10,61 +10,27 @@
                     <button @click="clearHistory" class="action-btn danger" :title="t('history.clear')">
                         🗑️ {{ t('history.clear') }}
                     </button>
-                    <button @click="close" class="close-btn" :title="t('common.close')">
-                        ✕
-                    </button>
+                    <button @click="close" class="close-btn" :title="t('common.close')">✕</button>
                 </div>
             </div>
 
             <div class="modal-body">
-                <div class="filter-tabs">
-                    <button
-                        @click="filter = 'all'"
-                        :class="['tab-btn', { active: filter === 'all' }]"
-                    >
-                        {{ t('history.all') }}
-                    </button>
-                    <button
-                        @click="filter = 'today'"
-                        :class="['tab-btn', { active: filter === 'today' }]"
-                    >
-                        {{ t('history.today') }}
-                    </button>
-                    <button
-                        @click="filter = 'recent'"
-                        :class="['tab-btn', { active: filter === 'recent' }]"
-                    >
-                        {{ t('history.recent') }}
-                    </button>
-                </div>
+                <FilterTabs
+                    :modelValue="filter"
+                    :tabs="filterTabs"
+                    @change="filter = $event"
+                />
 
                 <div class="history-list" v-if="conversations.length > 0">
-                    <div
+                    <ConversationItem
                         v-for="conv in conversations"
                         :key="conv.id"
-                        class="conversation-item"
-                    >
-                        <div class="conv-header">
-                            <span class="conv-time">{{ formatTime(conv.timestamp) }}</span>
-                            <span class="conv-provider">{{ conv.provider }}</span>
-                            <button
-                                @click="deleteItem(conv.id)"
-                                class="delete-btn"
-                                title="刪除"
-                            >
-                                ✕
-                            </button>
-                        </div>
-                        <div class="conv-question">
-                            <strong>{{ t('history.question') }}</strong>{{ conv.question }}
-                        </div>
-                        <div class="conv-answer">
-                            <strong>{{ t('history.answer') }}</strong>{{ conv.answer }}
-                        </div>
-                        <div v-if="conv.screenshot_path" class="conv-screenshot">
-                            📷 {{ t('history.screenshot') }}{{ getFileName(conv.screenshot_path) }}
-                        </div>
-                    </div>
+                        :conversation="conv"
+                        :questionLabel="t('history.question')"
+                        :answerLabel="t('history.answer')"
+                        :screenshotLabel="t('history.screenshot')"
+                        @delete="deleteItem(conv.id)"
+                    />
                 </div>
 
                 <div v-else class="empty-state">
@@ -77,26 +43,38 @@
 </template>
 
 <script>
-import { ref, onMounted, watch } from "vue";
-import { useI18n } from "vue-i18n";
+import { ref, computed, onMounted, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+import FilterTabs from './history/FilterTabs.vue';
+import ConversationItem from './history/ConversationItem.vue';
 
 export default {
-    name: "HistoryWindow",
-    emits: ["close"],
+    name: 'HistoryWindow',
+    components: {
+        FilterTabs,
+        ConversationItem
+    },
+    emits: ['close'],
     setup(props, { emit }) {
         const { t } = useI18n();
         const conversations = ref([]);
-        const filter = ref("all");
+        const filter = ref('all');
         const loading = ref(false);
+
+        const filterTabs = computed(() => [
+            { value: 'all', label: t('history.all') },
+            { value: 'today', label: t('history.today') },
+            { value: 'recent', label: t('history.recent') }
+        ]);
 
         const loadHistory = async () => {
             loading.value = true;
             try {
                 let result;
                 if (window.go && window.go.main && window.go.main.App) {
-                    if (filter.value === "today") {
+                    if (filter.value === 'today') {
                         result = await window.go.main.App.GetTodayHistory();
-                    } else if (filter.value === "recent") {
+                    } else if (filter.value === 'recent') {
                         result = await window.go.main.App.GetRecentHistory(10);
                     } else {
                         result = await window.go.main.App.GetAllHistory();
@@ -104,7 +82,7 @@ export default {
                     conversations.value = result || [];
                 }
             } catch (error) {
-                console.error("Failed to load history:", error);
+                console.error('Failed to load history:', error);
                 conversations.value = [];
             } finally {
                 loading.value = false;
@@ -120,7 +98,7 @@ export default {
                     await loadHistory();
                 }
             } catch (error) {
-                console.error("Failed to delete item:", error);
+                console.error('Failed to delete item:', error);
                 alert(t('history.deleteFailed') + error);
             }
         };
@@ -134,7 +112,7 @@ export default {
                     conversations.value = [];
                 }
             } catch (error) {
-                console.error("Failed to clear history:", error);
+                console.error('Failed to clear history:', error);
                 alert(t('history.clearFailed') + error);
             }
         };
@@ -142,34 +120,19 @@ export default {
         const exportHistory = async () => {
             try {
                 if (window.go && window.go.main && window.go.main.App) {
-                    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
                     const filename = `korner_history_${timestamp}.txt`;
                     await window.go.main.App.ExportHistoryToText(filename);
                     alert(t('history.exportSuccess') + filename);
                 }
             } catch (error) {
-                console.error("Failed to export history:", error);
+                console.error('Failed to export history:', error);
                 alert(t('history.exportFailed') + error);
             }
         };
 
-        const formatTime = (timestamp) => {
-            const date = new Date(timestamp);
-            return date.toLocaleString("zh-TW", {
-                year: "numeric",
-                month: "2-digit",
-                day: "2-digit",
-                hour: "2-digit",
-                minute: "2-digit",
-            });
-        };
-
-        const getFileName = (path) => {
-            return path.split(/[\\/]/).pop();
-        };
-
         const close = () => {
-            emit("close");
+            emit('close');
         };
 
         watch(filter, () => {
@@ -184,15 +147,14 @@ export default {
             t,
             conversations,
             filter,
+            filterTabs,
             loading,
             deleteItem,
             clearHistory,
             exportHistory,
-            formatTime,
-            getFileName,
-            close,
+            close
         };
-    },
+    }
 };
 </script>
 
@@ -291,113 +253,10 @@ export default {
     flex-direction: column;
 }
 
-.filter-tabs {
-    display: flex;
-    gap: 8px;
-    padding: 16px 24px;
-    border-bottom: 1px solid #e2e8f0;
-}
-
-.tab-btn {
-    padding: 8px 16px;
-    background: transparent;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.tab-btn:hover {
-    background: #f1f5f9;
-}
-
-.tab-btn.active {
-    background: #000;
-    color: white;
-    border-color: #000;
-}
-
 .history-list {
     flex: 1;
     overflow-y: auto;
     padding: 16px 24px;
-}
-
-.conversation-item {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 12px;
-    transition: all 0.2s;
-}
-
-.conversation-item:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.conv-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
-}
-
-.conv-time {
-    font-size: 12px;
-    color: #64748b;
-    font-weight: 600;
-}
-
-.conv-provider {
-    font-size: 11px;
-    padding: 2px 8px;
-    background: #000;
-    color: white;
-    border-radius: 4px;
-    font-weight: 600;
-}
-
-.delete-btn {
-    margin-left: auto;
-    width: 24px;
-    height: 24px;
-    border: none;
-    background: #fee2e2;
-    color: #dc2626;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: all 0.2s;
-}
-
-.delete-btn:hover {
-    background: #fecaca;
-    transform: scale(1.1);
-}
-
-.conv-question,
-.conv-answer {
-    font-size: 14px;
-    line-height: 1.6;
-    margin-bottom: 8px;
-    color: #334155;
-}
-
-.conv-question strong,
-.conv-answer strong {
-    color: #1e293b;
-    font-weight: 700;
-}
-
-.conv-screenshot {
-    font-size: 12px;
-    color: #64748b;
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid #e2e8f0;
 }
 
 .empty-state {
