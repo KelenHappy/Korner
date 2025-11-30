@@ -10,6 +10,10 @@ export function GetDPIScale() {
   return window['go']['main']['App']['GetDPIScale']();
 }
 
+export function GetLastScreenshotPath() {
+  return window['go']['main']['App']['GetLastScreenshotPath']();
+}
+
 export function GetPlatform() {
   return window['go']['main']['App']['GetPlatform']();
 }

@@ -11,9 +11,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"time"
+	"io"
 )
 
-// CaptureScreenshot captures a screenshot on macOS
+// CaptureScreenshot captures a screenshot on macOS and saves it to build/bin directory
 // If width and height are positive, captures the specified rectangle
 // Otherwise, opens the interactive system UI for selection
 func CaptureScreenshot(ctx context.Context, x, y, width, height int) (string, error) {
@@ -53,8 +54,94 @@ func CaptureScreenshot(ctx context.Context, x, y, width, height int) (string, er
 		return "", fmt.Errorf("read screenshot file: %w", err)
 	}
 
+	// Save to build/bin directory
+	exePath, err := os.Executable()
+	if err != nil {
+		log.Printf("WARNING: Could not get executable path: %v", err)
+		exePath = "."
+	}
+	exeDir := filepath.Dir(exePath)
+	
+	// Create screenshots directory if it doesn't exist
+	screenshotsDir := filepath.Join(exeDir, "screenshots")
+	if err := os.MkdirAll(screenshotsDir, 0755); err != nil {
+		log.Printf("WARNING: Could not create screenshots directory: %v", err)
+	}
+
+	// Generate filename with timestamp
+	filename := fmt.Sprintf("screenshot_%d.png", time.Now().UnixNano())
+	filePath := filepath.Join(screenshotsDir, filename)
+
+	// Copy file to screenshots directory
+	if err := copyFile(tmpPath, filePath); err != nil {
+		log.Printf("WARNING: Could not save screenshot file: %v", err)
+	} else {
+		log.Printf("Screenshot saved to: %s", filePath)
+	}
+
 	b64 := base64.StdEncoding.EncodeToString(data)
 	return "data:image/png;base64," + b64, nil
+}
+
+// copyFile copies a file from src to dst
+func copyFile(src, dst string) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	_, err = io.Copy(destFile, sourceFile)
+	return err
+}
+
+// GetLastScreenshotPath returns the path to the most recent screenshot
+func GetLastScreenshotPath() (string, error) {
+	exePath, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	exeDir := filepath.Dir(exePath)
+	screenshotsDir := filepath.Join(exeDir, "screenshots")
+
+	entries, err := os.ReadDir(screenshotsDir)
+	if err != nil {
+		return "", err
+	}
+
+	if len(entries) == 0 {
+		return "", fmt.Errorf("no screenshots found")
+	}
+
+	// Get the most recent file
+	var latestFile string
+	var latestTime time.Time
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		if info.ModTime().After(latestTime) {
+			latestTime = info.ModTime()
+			latestFile = filepath.Join(screenshotsDir, entry.Name())
+		}
+	}
+
+	if latestFile == "" {
+		return "", fmt.Errorf("no valid screenshots found")
+	}
+
+	return latestFile, nil
 }
 
 // GetDPIScale returns the DPI scale for macOS

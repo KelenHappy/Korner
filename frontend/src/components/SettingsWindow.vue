@@ -35,16 +35,27 @@
                                 v-model="settings.apiProvider"
                                 class="form-select"
                             >
-                                <option value="openai">OpenAI</option>
-                                <option value="anthropic">
-                                    Anthropic (Claude)
-                                </option>
-                                <option value="gemini">Google Gemini</option>
-                                <option value="custom">Custom</option>
+                                <option value="gptoss">🚀 AMD GPT-OSS-120B (推薦)</option>
+                                <option value="openai" disabled>OpenAI (已停用)</option>
+                                <option value="anthropic" disabled>Anthropic (已停用)</option>
+                                <option value="gemini" disabled>Google Gemini (已停用)</option>
+                                <option value="custom" disabled>Custom (已停用)</option>
                             </select>
                         </div>
 
-                        <div class="form-group">
+                        <div class="form-group" v-if="settings.apiProvider === 'gptoss'">
+                            <label class="form-label">API Endpoint</label>
+                            <select
+                                v-model="settings.apiEndpoint"
+                                class="form-select"
+                            >
+                                <option value="http://210.61.209.139:45014/v1/">端點 1 (推薦)</option>
+                                <option value="http://210.61.209.139:45005/v1/">端點 2 (備用)</option>
+                            </select>
+                            <p class="form-hint">使用 AMD GPT-OSS-120B 模型，無需 API Key</p>
+                        </div>
+
+                        <div class="form-group" v-if="settings.apiProvider !== 'gptoss'">
                             <label class="form-label">API Key</label>
                             <div class="input-with-icon">
                                 <input
@@ -52,28 +63,18 @@
                                     :type="showApiKey ? 'text' : 'password'"
                                     class="form-input"
                                     placeholder="sk-..."
+                                    disabled
                                 />
                                 <button
                                     @click="showApiKey = !showApiKey"
                                     class="icon-btn"
                                     type="button"
+                                    disabled
                                 >
                                     {{ showApiKey ? "🙈" : "👁️" }}
                                 </button>
                             </div>
-                        </div>
-
-                        <div
-                            class="form-group"
-                            v-if="settings.apiProvider === 'custom'"
-                        >
-                            <label class="form-label">API Endpoint</label>
-                            <input
-                                v-model="settings.apiEndpoint"
-                                type="text"
-                                class="form-input"
-                                placeholder="https://api.example.com/v1/chat/completions"
-                            />
+                            <p class="form-hint">此 API 提供商已停用</p>
                         </div>
                     </div>
 
@@ -430,6 +431,18 @@ export default {
 
 .icon-btn:hover {
     transform: scale(1.1);
+}
+
+.icon-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.form-hint {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #64748b;
+    line-height: 1.4;
 }
 
 .form-range {

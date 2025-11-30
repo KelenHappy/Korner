@@ -24,7 +24,7 @@ type App struct {
 
 // AppSettings stores user configuration
 type AppSettings struct {
-	APIProvider  string `json:"apiProvider"` // "openai", "anthropic", "gemini", "custom"
+	APIProvider  string `json:"apiProvider"` // "gptoss", "openai", "anthropic", "gemini", "custom"
 	APIKey       string `json:"apiKey"`
 	APIEndpoint  string `json:"apiEndpoint"`
 	FloatingIcon string `json:"floatingIcon"`
@@ -34,9 +34,9 @@ type AppSettings struct {
 func NewApp() *App {
 	app := &App{
 		settings: &AppSettings{
-			APIProvider:  "openai",
-			APIKey:       "",
-			APIEndpoint:  "",
+			APIProvider:  "gptoss", // 默認使用 GPT-OSS-120B
+			APIKey:       "dummy-key",
+			APIEndpoint:  "http://210.61.209.139:45014/v1/", // 默認端點
 			FloatingIcon: "🌸",
 		},
 		platform: platform.New(),
@@ -96,9 +96,9 @@ func (a *App) SaveSettings(settings AppSettings) error {
 func (a *App) GetSettings() AppSettings {
 	if a.settings == nil {
 		return AppSettings{
-			APIProvider:  "openai",
-			APIKey:       "",
-			APIEndpoint:  "",
+			APIProvider:  "gptoss",
+			APIKey:       "dummy-key",
+			APIEndpoint:  "http://210.61.209.139:45014/v1/",
 			FloatingIcon: "🌸",
 		}
 	}
@@ -196,7 +196,13 @@ func (a *App) CaptureScreenshot(x, y, width, height int) (string, error) {
 	screenY := y + winY
 	log.Printf("DEBUG: Screen coords after window offset: (%d, %d, %d, %d)\n", screenX, screenY, width, height)
 
+	// Capture screenshot (saves to build/bin/screenshots/)
 	return a.platform.CaptureScreenshot(ctx, screenX, screenY, width, height)
+}
+
+// GetLastScreenshotPath returns the file path of the most recent screenshot
+func (a *App) GetLastScreenshotPath() (string, error) {
+	return getLastScreenshotPath()
 }
 
 // QueryLLM sends a query with screenshot to the configured LLM provider
@@ -220,6 +226,13 @@ func (a *App) QueryLLM(query string, screenshotBase64 string) (string, error) {
 	var err error
 
 	switch a.settings.APIProvider {
+	case "gptoss":
+		// GPT-OSS-120B (默認優先)
+		endpoint := a.settings.APIEndpoint
+		if endpoint == "" {
+			endpoint = "http://210.61.209.139:45014/v1/"
+		}
+		result, err = llm.QueryGPTOSS(ctx, query, screenshotBase64, a.settings.APIKey, endpoint)
 	case "openai":
 		result, err = llm.QueryOpenAI(ctx, query, screenshotBase64, a.settings.APIKey, "gpt-4-vision-preview")
 	case "anthropic":

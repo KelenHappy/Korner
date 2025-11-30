@@ -10,6 +10,9 @@ import (
 	"image"
 	"image/png"
 	"log"
+	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/kbinani/screenshot"
 )
@@ -27,7 +30,8 @@ const (
 	LOGPIXELSY = 90
 )
 
-// CaptureScreenshot captures a screenshot of the specified region
+// CaptureScreenshot captures a screenshot and saves it to build/bin directory
+// Returns both the file path and base64 data URL
 func CaptureScreenshot(ctx context.Context, x, y, width, height int) (string, error) {
 	log.Printf("DEBUG: Capture called: x=%d, y=%d, width=%d, height=%d\n", x, y, width, height)
 
@@ -76,13 +80,83 @@ func CaptureScreenshot(ctx context.Context, x, y, width, height int) (string, er
 		return "", fmt.Errorf("captured image is nil")
 	}
 
+	// Encode to PNG
 	var buf bytes.Buffer
 	if err := png.Encode(&buf, img); err != nil {
 		return "", fmt.Errorf("encode png: %w", err)
 	}
 
+	// Save to build/bin directory
+	exePath, err := os.Executable()
+	if err != nil {
+		log.Printf("WARNING: Could not get executable path: %v", err)
+		exePath = "."
+	}
+	exeDir := filepath.Dir(exePath)
+	
+	// Create screenshots directory if it doesn't exist
+	screenshotsDir := filepath.Join(exeDir, "screenshots")
+	if err := os.MkdirAll(screenshotsDir, 0755); err != nil {
+		log.Printf("WARNING: Could not create screenshots directory: %v", err)
+	}
+
+	// Generate filename with timestamp
+	filename := fmt.Sprintf("screenshot_%d.png", time.Now().UnixNano())
+	filePath := filepath.Join(screenshotsDir, filename)
+
+	// Save file
+	if err := os.WriteFile(filePath, buf.Bytes(), 0644); err != nil {
+		log.Printf("WARNING: Could not save screenshot file: %v", err)
+	} else {
+		log.Printf("Screenshot saved to: %s", filePath)
+	}
+
+	// Return base64 data URL for frontend display
 	b64 := base64.StdEncoding.EncodeToString(buf.Bytes())
 	return "data:image/png;base64," + b64, nil
+}
+
+// GetLastScreenshotPath returns the path to the most recent screenshot
+func GetLastScreenshotPath() (string, error) {
+	exePath, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	exeDir := filepath.Dir(exePath)
+	screenshotsDir := filepath.Join(exeDir, "screenshots")
+
+	entries, err := os.ReadDir(screenshotsDir)
+	if err != nil {
+		return "", err
+	}
+
+	if len(entries) == 0 {
+		return "", fmt.Errorf("no screenshots found")
+	}
+
+	// Get the most recent file
+	var latestFile string
+	var latestTime time.Time
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		if info.ModTime().After(latestTime) {
+			latestTime = info.ModTime()
+			latestFile = filepath.Join(screenshotsDir, entry.Name())
+		}
+	}
+
+	if latestFile == "" {
+		return "", fmt.Errorf("no valid screenshots found")
+	}
+
+	return latestFile, nil
 }
 
 // GetDPIScale returns the DPI scaling factor

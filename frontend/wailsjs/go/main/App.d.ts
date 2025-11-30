@@ -6,6 +6,8 @@ export function CaptureScreenshot(arg1:number,arg2:number,arg3:number,arg4:numbe
 
 export function GetDPIScale():Promise<number>;
 
+export function GetLastScreenshotPath():Promise<string>;
+
 export function GetPlatform():Promise<string>;
 
 export function GetScreenSize():Promise<number|number>;

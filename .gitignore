@@ -74,6 +74,8 @@ Thumbs.db
 *.jpg
 *.jpeg
 !build/appicon.*
+build/bin/screenshots/
+screenshots/
 nul
 korner.log
 
