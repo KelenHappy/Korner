@@ -76,3 +76,5 @@ Thumbs.db
 !build/appicon.*
 nul
 korner.log
+go.mod
+*.mod
