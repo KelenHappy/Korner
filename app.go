@@ -107,30 +107,21 @@ func (a *App) GetSettings() AppSettings {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	log.Println("[startup] App context initialized")
+	log.Printf("[startup] Context type: %T", ctx)
 }
 
 // domReady is called after the frontend DOM is ready
 func (a *App) domReady(ctx context.Context) {
-	// TODO: Debug why app crashes on startup
-	// Temporarily disabling all operations to test basic startup
 	log.Println("[domReady] Starting...")
 
 	// Log DPI scale for diagnostics
 	logDPIInfo()
 
-	// Disable Windows Snap feature
-	// disableSnap()
-
-	// Initialize system tray
-	// go a.InitSystemTray()
-
-	// Register global hotkey (Ctrl+Alt+Q)
-	// go func() {
-	// 	err := a.RegisterGlobalHotkey()
-	// 	if err != nil {
-	// 		log.Printf("Failed to register global hotkey: %v", err)
-	// 	}
-	// }()
+	// Try to show window explicitly
+	log.Println("[domReady] Attempting to show window...")
+	wailsruntime.WindowShow(ctx)
+	log.Println("[domReady] WindowShow called")
 
 	log.Println("[domReady] Complete")
 }
