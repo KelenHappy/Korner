@@ -41,7 +41,7 @@ wails build --clean
 * **macOS 12+** (Intel & Apple Silicon)  
 ```sh
 brew install go      
-go install  github.com/wailsapp/wails/v2/cmd/wails@latestgithub.com/wailsapp/wails/v2/cmd/wails@latest
+go install  github.com/wailsapp/wails/v2/cmd/wails@latest
 wails build --clean
 ```
 
