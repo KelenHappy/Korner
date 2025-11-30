@@ -42,6 +42,8 @@ wails build --clean
 ```sh
 brew install go      
 go install  github.com/wailsapp/wails/v2/cmd/wails@latest
+echo 'export PATH="$HOME/go/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
 wails build --clean
 ```
 

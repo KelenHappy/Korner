@@ -8,6 +8,10 @@
 *.so
 *.dylib
 
+# Go binaries - root directory
+/Korner
+/Korner.app/
+
 # Test binary, built with `go test -c`
 *.test
 
@@ -32,12 +36,17 @@ go.work.sum
 # .vscode/
 
 # Frontend
-frontend/package-lock.json
-frontend/package.json.md5
 node_modules/
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+frontend/package-lock.json
+frontend/package.json.md5
+frontend/wailsjs/go/
+*.lock
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -45,7 +54,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Wails
-build/bin/*
+build/bin/Korner*
 build/MacOS/*
 build/Resources/*
 build/darwin/*

@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,13 +26,18 @@ func getScreenSize() (int, int) {
 	return 1920, 1080
 }
 
-func captureScreenshot(ctx context.Context, x, y, width, height int) (string, error) {
 // captureScreenshot is the macOS (darwin) implementation that captures either a specified rectangle
 // or, if width/height are not positive, opens the interactive system UI for selection.
 //
 // It returns a data URL string: "data:image/png;base64,<...>"
 func captureScreenshot(ctx context.Context, x, y, width, height int) (string, error) {
 	return captureScreenshotDarwin(ctx, x, y, width, height)
+}
+
+// logDPIInfo logs DPI info for diagnostics (keeps parity with Windows implementation)
+func logDPIInfo() {
+	scale := getDPIScale()
+	log.Printf("DEBUG: System DPI Scale: %.2f\n", scale)
 }
 
 // captureScreenshotDarwin performs the actual screencapture call on macOS.

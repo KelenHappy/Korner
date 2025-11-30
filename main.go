@@ -49,7 +49,7 @@ func main() {
 			app,
 		},
 		Debug: options.Debug{
-			OpenInspectorOnStartup: false,
+			OpenInspectorOnStartup: true,
 		},
 		Linux: &linux.Options{
 			Icon:                []byte{},

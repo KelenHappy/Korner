@@ -1,3 +1,5 @@
+//go:build !darwin
+
 package main
 
 import (
@@ -11,7 +13,7 @@ import (
 //go:embed build/appicon.png
 var iconData []byte
 
-// InitSystemTray initializes the system tray icon and menu
+// InitSystemTray initializes the system tray icon and menu (non-macOS version)
 func (a *App) InitSystemTray() {
 	go systray.Run(func() {
 		onReady(a)

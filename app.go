@@ -111,22 +111,28 @@ func (a *App) startup(ctx context.Context) {
 
 // domReady is called after the frontend DOM is ready
 func (a *App) domReady(ctx context.Context) {
+	// TODO: Debug why app crashes on startup
+	// Temporarily disabling all operations to test basic startup
+	log.Println("[domReady] Starting...")
+
 	// Log DPI scale for diagnostics
 	logDPIInfo()
 
 	// Disable Windows Snap feature
-	disableSnap()
+	// disableSnap()
 
 	// Initialize system tray
-	go a.InitSystemTray()
+	// go a.InitSystemTray()
 
 	// Register global hotkey (Ctrl+Alt+Q)
-	go func() {
-		err := a.RegisterGlobalHotkey()
-		if err != nil {
-			log.Printf("Failed to register global hotkey: %v", err)
-		}
-	}()
+	// go func() {
+	// 	err := a.RegisterGlobalHotkey()
+	// 	if err != nil {
+	// 		log.Printf("Failed to register global hotkey: %v", err)
+	// 	}
+	// }()
+
+	log.Println("[domReady] Complete")
 }
 
 // ShowWindow shows the application window
