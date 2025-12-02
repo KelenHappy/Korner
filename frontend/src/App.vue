@@ -254,12 +254,12 @@ export default {
                 console.log("Failed to save icon position:", error);
             }
 
-            // 先擴大窗口到 100x280（寬度只需要放1個按鈕，高度足夠放4個按鈕加間距）
+            // 先擴大窗口到 100x350（寬度只需要放1個按鈕，高度足夠放5個按鈕加間距）
             try {
                 // 窗口左邊對齊圖標中心，上邊在圖標下方
                 const newX = iconScreenPos.value.x - 50;
                 const newY = iconScreenPos.value.y - 10; // 圖標上方一點
-                WindowSetSize(100, 280);
+                WindowSetSize(100, 350);
                 WindowSetPosition(newX, newY);
             } catch (error) {
                 console.log("Failed to resize window:", error);
