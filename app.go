@@ -227,7 +227,8 @@ func (a *App) QueryLLM(query string, screenshotBase64 string) (string, error) {
 		return "", fmt.Errorf("Settings not initialized. Please configure your API settings.")
 	}
 
-	if a.settings.APIKey == "" {
+	// Only check API key for providers that require it (not gptoss)
+	if a.settings.APIProvider != "gptoss" && a.settings.APIKey == "" {
 		return "", fmt.Errorf("API key not configured. Please set your API key in Settings.")
 	}
 
