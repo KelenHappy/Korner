@@ -10,8 +10,79 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
+
+var (
+	modelNameCache      = make(map[string]string)
+	modelNameCacheMutex sync.RWMutex
+)
+
+// ModelsResponse represents the vLLM /v1/models response
+type ModelsResponse struct {
+	Data []ModelData `json:"data"`
+}
+
+type ModelData struct {
+	ID string `json:"id"`
+}
+
+// getModelName fetches the actual model name from vLLM server
+func getModelName(baseURL string, apiKey string) (string, error) {
+	// Check cache first
+	modelNameCacheMutex.RLock()
+	if cached, ok := modelNameCache[baseURL]; ok {
+		modelNameCacheMutex.RUnlock()
+		return cached, nil
+	}
+	modelNameCacheMutex.RUnlock()
+
+	// Fetch from server
+	modelsURL := strings.TrimSuffix(baseURL, "/") + "/models"
+	log.Printf("[GPT-OSS] Fetching available models from: %s", modelsURL)
+
+	httpClient := &http.Client{Timeout: 10 * time.Second}
+	req, err := http.NewRequest(http.MethodGet, modelsURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("create models request: %w", err)
+	}
+
+	if apiKey == "" {
+		apiKey = "dummy-key"
+	}
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("fetch models failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("models API error (%d): %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var modelsResp ModelsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&modelsResp); err != nil {
+		return "", fmt.Errorf("decode models response: %w", err)
+	}
+
+	if len(modelsResp.Data) == 0 {
+		return "", errors.New("no models available on server")
+	}
+
+	modelName := modelsResp.Data[0].ID
+	log.Printf("[GPT-OSS] Found model: %s", modelName)
+
+	// Cache the result
+	modelNameCacheMutex.Lock()
+	modelNameCache[baseURL] = modelName
+	modelNameCacheMutex.Unlock()
+
+	return modelName, nil
+}
 
 // QueryGPTOSS calls AMD GPT-OSS-120B via vLLM endpoint
 func QueryGPTOSS(ctx context.Context, query string, screenshotBase64 string, apiKey string, endpoint string) (string, error) {
@@ -21,7 +92,20 @@ func QueryGPTOSS(ctx context.Context, query string, screenshotBase64 string, api
 		endpoint = strings.TrimSuffix(endpoint, "/") + "/chat/completions"
 	}
 
+	// Extract base URL for model fetching
+	baseURL := strings.TrimSuffix(endpoint, "/chat/completions")
+	if !strings.HasSuffix(baseURL, "/v1") {
+		baseURL = strings.TrimSuffix(baseURL, "/") + "/v1"
+	}
+
 	log.Printf("[GPT-OSS] Using endpoint: %s", endpoint)
+
+	// Fetch the actual model name from the server
+	modelName, err := getModelName(baseURL, apiKey)
+	if err != nil {
+		log.Printf("[GPT-OSS] Warning: Could not fetch model name, using default: %v", err)
+		modelName = "gpt-oss-120b" // Fallback to default
+	}
 
 	messages := []OpenAIMessage{
 		{
@@ -58,11 +142,13 @@ func QueryGPTOSS(ctx context.Context, query string, screenshotBase64 string, api
 	}
 
 	reqPayload := OpenAIRequest{
-		Model:       "gpt-oss-120b",
+		Model:       modelName,
 		Messages:    messages,
 		MaxTokens:   2048,
 		Temperature: 0.7,
 	}
+
+	log.Printf("[GPT-OSS] Using model: %s", modelName)
 
 	body, err := json.Marshal(reqPayload)
 	if err != nil {
