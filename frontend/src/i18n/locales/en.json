@@ -8,7 +8,9 @@
     "askQuestion": "Ask",
     "settings": "Settings",
     "history": "History",
-    "minimize": "Minimize"
+    "minimize": "Minimize",
+    "photoReply": "Photo Reply",
+    "voiceMeeting": "Voice Meeting"
   },
   "screenshot": {
     "selectArea": "Click and drag to select an area",

@@ -20,6 +20,7 @@
             @history="handleHistory"
             @hide="hidePieMenu"
             @hide-pet="handleHidePet"
+            @voice-meeting="handleVoiceMeeting"
         />
 
         <!-- Screenshot Overlay -->
@@ -254,7 +255,7 @@ export default {
                 console.log("Failed to save icon position:", error);
             }
 
-            // 先擴大窗口到 100x350（寬度只需要放1個按鈕，高度足夠放5個按鈕加間距）
+            // 先擴大窗口到 100x350（寬度只需要放1個按鈕，高度足夠放6個按鈕加間距）
             try {
                 // 窗口左邊對齊圖標中心，上邊在圖標下方
                 const newX = iconScreenPos.value.x - 50;
@@ -345,8 +346,9 @@ export default {
         };
 
         const handleAskQuestion = async () => {
-            // 隱藏菜單
-            await hidePieMenu();
+            // 先隱藏菜單並等待動畫完成
+            showPieMenu.value = false;
+            await new Promise((resolve) => setTimeout(resolve, 250));
 
             // 調整視窗大小並置中
             try {
@@ -367,7 +369,10 @@ export default {
 
         const handleSettings = async () => {
             console.log("[Korner] handleSettings called");
-            await hidePieMenu();
+            
+            // 先隱藏菜單並等待動畫完成
+            showPieMenu.value = false;
+            await new Promise((resolve) => setTimeout(resolve, 250));
 
             // 調整視窗大小並置中
             try {
@@ -389,7 +394,9 @@ export default {
         };
 
         const handleHistory = async () => {
-            await hidePieMenu();
+            // 先隱藏菜單並等待動畫完成
+            showPieMenu.value = false;
+            await new Promise((resolve) => setTimeout(resolve, 250));
 
             // 調整視窗大小並置中
             try {
@@ -400,6 +407,7 @@ export default {
                 console.log("Failed to resize/center window:", error);
             }
 
+            // 顯示歷史窗口
             showHistoryWindow.value = true;
         };
 
@@ -565,9 +573,40 @@ export default {
         };
 
         const handleHidePet = async () => {
-            // 隱藏菜單
-            await hidePieMenu();
-            // 可以在這裡添加隱藏寵物的邏輯（例如最小化窗口）
+            // 隱藏菜單並縮小窗口
+            showPieMenu.value = false;
+            await new Promise((resolve) => setTimeout(resolve, 250));
+            
+            // 縮小窗口回到圖標大小
+            if (iconScreenPos.value) {
+                try {
+                    const newX = iconScreenPos.value.x - 50;
+                    const newY = iconScreenPos.value.y - 50;
+                    WindowSetSize(100, 100);
+                    WindowSetPosition(newX, newY);
+                } catch (error) {
+                    console.log("Failed to shrink window:", error);
+                }
+            }
+        };
+
+        const handleVoiceMeeting = async () => {
+            // 語音會議功能：打開語音輸入界面
+            // 先隱藏菜單並等待動畫完成
+            showPieMenu.value = false;
+            await new Promise((resolve) => setTimeout(resolve, 250));
+
+            // 調整視窗大小並置中
+            try {
+                WindowSetSize(800, 600);
+                await new Promise((resolve) => setTimeout(resolve, 100));
+                WindowCenter();
+            } catch (error) {
+                console.log("Failed to resize/center window:", error);
+            }
+
+            // TODO: 顯示語音輸入窗口
+            console.log("[Korner] Voice meeting feature - to be implemented");
         };
 
         return {
@@ -599,6 +638,7 @@ export default {
             showHistoryWindow,
             handleHistory,
             closeHistory,
+            handleVoiceMeeting,
         };
     },
 };

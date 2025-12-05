@@ -8,7 +8,9 @@
     "askQuestion": "說話",
     "settings": "設定",
     "history": "歷史",
-    "minimize": "休息"
+    "minimize": "休息",
+    "photoReply": "照片回覆",
+    "voiceMeeting": "語音會議"
   },
   "screenshot": {
     "selectArea": "點擊並拖曳選擇區域",

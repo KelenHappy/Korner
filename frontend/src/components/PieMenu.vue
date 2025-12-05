@@ -71,6 +71,19 @@
                         <span class="pie-icon">📜</span>
                         <span class="pie-label" v-show="activeItem === 4">{{ t('menu.history') }}</span>
                     </div>
+
+                    <div
+                        v-if="showItems"
+                        key="item5"
+                        class="pie-item voice-theme"
+                        :style="{ '--delay': '0.3s' }"
+                        @click.stop="$emit('voice-meeting')"
+                        @mouseenter="activeItem = 5"
+                        @mouseleave="activeItem = null"
+                    >
+                        <span class="pie-icon">🎤</span>
+                        <span class="pie-label" v-show="activeItem === 5">{{ t('menu.voiceMeeting') }}</span>
+                    </div>
                 </transition-group>
             </div>
         </div>
@@ -107,7 +120,7 @@ export default {
             default: 0,
         },
     },
-    emits: ["screenshot", "ask-question", "settings", "history", "hide", "hide-pet"],
+    emits: ["screenshot", "ask-question", "settings", "history", "hide", "hide-pet", "voice-meeting"],
     setup(props, { emit }) {
         const { t } = useI18n();
         const activeItem = ref(null);
@@ -193,7 +206,7 @@ export default {
 .pie-items {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
     align-items: center;
     justify-content: center;
     flex-wrap: nowrap;
@@ -202,7 +215,7 @@ export default {
 /* --- 卡通化按鈕樣式 --- */
 .pie-item {
     position: relative;
-    width: 40px; height: 40px;
+    width: 32px; height: 32px;
     border-radius: 50%;
     display: flex;
     align-items: center; justify-content: center;
@@ -213,19 +226,19 @@ export default {
 
     /* 桌寵風格：粗邊框、鮮明陰影 */
     background: #fff;
-    border: 3px solid #4a4a4a;
-    box-shadow: 2px 4px 0px rgba(0,0,0,0.3); 
+    border: 2px solid #4a4a4a;
+    box-shadow: 1px 3px 0px rgba(0,0,0,0.3); 
     
     transform: scale(1);
     transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s, box-shadow 0.2s; /* 懸停時的彈性 */
 }
 
-.pie-icon { font-size: 18px; }
+.pie-icon { font-size: 14px; }
 
 /* Hover 效果：更 Q 彈 */
 .pie-item:hover {
-    transform: scale(1.2) rotate(5deg);
-    box-shadow: 4px 6px 0px rgba(0,0,0,0.4);
+    transform: scale(1.15) rotate(5deg);
+    box-shadow: 3px 5px 0px rgba(0,0,0,0.4);
     z-index: 10;
 }
 
@@ -234,19 +247,20 @@ export default {
 .settings-theme:hover { border-color: #339af0; color: #339af0; }
 .history-theme:hover { border-color: #9775fa; color: #9775fa; }
 .hide-theme:hover { border-color: #fcc419; color: #fcc419; }
+.voice-theme:hover { border-color: #20c997; color: #20c997; }
 
 
 .pie-label {
     position: absolute;
-    bottom: -28px; 
+    bottom: -24px; 
     left: 50%;
     transform: translateX(-50%);
     white-space: nowrap;
     background: rgba(50, 50, 50, 0.9);
     color: #fff;
-    padding: 3px 8px;
-    border-radius: 12px;
-    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 11px;
     font-weight: bold;
     pointer-events: none;
     box-shadow: 1px 2px 4px rgba(0,0,0,0.2);
