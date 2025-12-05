@@ -38,6 +38,10 @@ export function GetRecentHistory(arg1) {
   return window['go']['main']['App']['GetRecentHistory'](arg1);
 }
 
+export function GetRecordingDuration() {
+  return window['go']['main']['App']['GetRecordingDuration']();
+}
+
 export function GetScreenSize() {
   return window['go']['main']['App']['GetScreenSize']();
 }
@@ -58,8 +62,16 @@ export function HideWindow() {
   return window['go']['main']['App']['HideWindow']();
 }
 
+export function IsRecording() {
+  return window['go']['main']['App']['IsRecording']();
+}
+
 export function OpenDevTools() {
   return window['go']['main']['App']['OpenDevTools']();
+}
+
+export function OpenRecordingFolder() {
+  return window['go']['main']['App']['OpenRecordingFolder']();
 }
 
 export function PositionWindowAt(arg1, arg2) {
@@ -80,6 +92,14 @@ export function SetWindowPosition(arg1, arg2) {
 
 export function ShowWindow() {
   return window['go']['main']['App']['ShowWindow']();
+}
+
+export function StartRecording() {
+  return window['go']['main']['App']['StartRecording']();
+}
+
+export function StopRecording() {
+  return window['go']['main']['App']['StopRecording']();
 }
 
 export function TriggerScreenshot() {

@@ -7,10 +7,12 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"time"
 
+	"github.com/Kelen/Korner/internal/audio"
 	"github.com/Kelen/Korner/internal/history"
 	"github.com/Kelen/Korner/internal/llm"
 	"github.com/Kelen/Korner/internal/platform"
@@ -23,6 +25,7 @@ type App struct {
 	settings *AppSettings
 	platform platform.Platform
 	history  *history.Manager
+	recorder *audio.Recorder
 }
 
 // AppSettings stores user configuration
@@ -352,4 +355,80 @@ func (a *App) ExportHistoryToText(outputPath string) error {
 		return fmt.Errorf("history manager not initialized")
 	}
 	return a.history.ExportToText(outputPath)
+}
+
+// StartRecording starts audio recording
+func (a *App) StartRecording() error {
+	if a.recorder == nil {
+		recorder, err := audio.NewRecorder()
+		if err != nil {
+			return fmt.Errorf("failed to create recorder: %w", err)
+		}
+		a.recorder = recorder
+	}
+
+	if err := a.recorder.StartRecording(); err != nil {
+		return fmt.Errorf("failed to start recording: %w", err)
+	}
+
+	log.Println("[Audio] Recording started")
+	return nil
+}
+
+// StopRecording stops audio recording and returns the file path
+func (a *App) StopRecording() (string, error) {
+	if a.recorder == nil {
+		return "", fmt.Errorf("recorder not initialized")
+	}
+
+	filePath, err := a.recorder.StopRecording()
+	if err != nil {
+		return "", fmt.Errorf("failed to stop recording: %w", err)
+	}
+
+	log.Printf("[Audio] Recording saved to: %s", filePath)
+	return filePath, nil
+}
+
+// IsRecording returns whether audio is currently being recorded
+func (a *App) IsRecording() bool {
+	if a.recorder == nil {
+		return false
+	}
+	return a.recorder.IsRecording()
+}
+
+// GetRecordingDuration returns the current recording duration in seconds
+func (a *App) GetRecordingDuration() float64 {
+	if a.recorder == nil {
+		return 0
+	}
+	return a.recorder.GetDuration()
+}
+
+// OpenRecordingFolder opens the folder containing recordings
+func (a *App) OpenRecordingFolder() error {
+	// Get the executable directory
+	exePath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("failed to get executable path: %w", err)
+	}
+	exeDir := filepath.Dir(exePath)
+	
+	// Record directory is relative to executable
+	recordDir := filepath.Join(exeDir, "record")
+	
+	// Create directory if it doesn't exist
+	if err := os.MkdirAll(recordDir, 0755); err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
+
+	// Open folder in Windows Explorer
+	cmd := exec.Command("explorer", recordDir)
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to open folder: %w", err)
+	}
+
+	log.Printf("[Audio] Opening folder: %s", recordDir)
+	return nil
 }

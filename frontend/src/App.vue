@@ -57,6 +57,9 @@
 
         <!-- History Window -->
         <HistoryWindow v-if="showHistoryWindow" @close="closeHistory" />
+
+        <!-- Voice Meeting Window -->
+        <VoiceMeetingWindow v-if="showVoiceMeetingWindow" @close="closeVoiceMeeting" />
     </div>
 </template>
 
@@ -103,6 +106,7 @@ import ChatWindow from "./components/ChatWindow.vue";
 import ResponseWindow from "./components/ResponseWindow.vue";
 import SettingsWindow from "./components/SettingsWindow.vue";
 import HistoryWindow from "./components/HistoryWindow.vue";
+import VoiceMeetingWindow from "./components/VoiceMeetingWindow.vue";
 
 import {
     WindowSetAlwaysOnTop,
@@ -127,6 +131,7 @@ export default {
         ResponseWindow,
         SettingsWindow,
         HistoryWindow,
+        VoiceMeetingWindow,
     },
     setup() {
         const showPieMenu = ref(false);
@@ -137,6 +142,7 @@ export default {
         const showResponseWindow = ref(false);
         const showSettingsWindow = ref(false);
         const showHistoryWindow = ref(false);
+        const showVoiceMeetingWindow = ref(false);
         const currentQuery = ref(null);
         const latestResponse = ref("");
         const isLoadingResponse = ref(false);
@@ -233,6 +239,8 @@ export default {
                     closeSettings();
                 } else if (showHistoryWindow.value) {
                     closeHistory();
+                } else if (showVoiceMeetingWindow.value) {
+                    closeVoiceMeeting();
                 }
             }
         };
@@ -305,7 +313,8 @@ export default {
                 !showChatWindow.value &&
                 !showResponseWindow.value &&
                 !showSettingsWindow.value &&
-                !showHistoryWindow.value
+                !showHistoryWindow.value &&
+                !showVoiceMeetingWindow.value
             ) {
                 try {
                     WindowSetSize(100, 100);
@@ -591,22 +600,27 @@ export default {
         };
 
         const handleVoiceMeeting = async () => {
-            // 語音會議功能：打開語音輸入界面
             // 先隱藏菜單並等待動畫完成
             showPieMenu.value = false;
             await new Promise((resolve) => setTimeout(resolve, 250));
 
             // 調整視窗大小並置中
             try {
-                WindowSetSize(800, 600);
+                WindowSetSize(700, 600);
                 await new Promise((resolve) => setTimeout(resolve, 100));
                 WindowCenter();
             } catch (error) {
                 console.log("Failed to resize/center window:", error);
             }
 
-            // TODO: 顯示語音輸入窗口
-            console.log("[Korner] Voice meeting feature - to be implemented");
+            // 顯示語音會議窗口
+            showVoiceMeetingWindow.value = true;
+        };
+
+        const closeVoiceMeeting = async () => {
+            showVoiceMeetingWindow.value = false;
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            await checkAndShrinkWindow();
         };
 
         return {
@@ -638,7 +652,9 @@ export default {
             showHistoryWindow,
             handleHistory,
             closeHistory,
+            showVoiceMeetingWindow,
             handleVoiceMeeting,
+            closeVoiceMeeting,
         };
     },
 };

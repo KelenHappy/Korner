@@ -98,5 +98,18 @@
     "api": "API",
     "icon": "Icon",
     "language": "Language"
+  },
+  "voiceMeeting": {
+    "title": "Voice Meeting Recording",
+    "recording": "Recording...",
+    "ready": "Ready",
+    "start": "Start Recording",
+    "stop": "Stop Recording",
+    "saved": "Recording saved",
+    "openFolder": "Open Folder",
+    "infoTitle": "Instructions",
+    "info1": "Click 'Start Recording' to capture system audio",
+    "info2": "Recording will be saved as WAV format",
+    "info3": "Can be used for meeting notes, voice-to-text, etc."
   }
 }

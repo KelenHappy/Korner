@@ -21,6 +21,8 @@ export function GetPlatform():Promise<string>;
 
 export function GetRecentHistory(arg1:number):Promise<Array<history.Conversation>>;
 
+export function GetRecordingDuration():Promise<number>;
+
 export function GetScreenSize():Promise<number|number>;
 
 export function GetSettings():Promise<main.AppSettings>;
@@ -31,7 +33,11 @@ export function GetWindowPosition():Promise<number|number>;
 
 export function HideWindow():Promise<void>;
 
+export function IsRecording():Promise<boolean>;
+
 export function OpenDevTools():Promise<void>;
+
+export function OpenRecordingFolder():Promise<void>;
 
 export function PositionWindowAt(arg1:number,arg2:number):Promise<void>;
 
@@ -42,5 +48,9 @@ export function SaveSettings(arg1:main.AppSettings):Promise<void>;
 export function SetWindowPosition(arg1:number,arg2:number):Promise<void>;
 
 export function ShowWindow():Promise<void>;
+
+export function StartRecording():Promise<void>;
+
+export function StopRecording():Promise<string>;
 
 export function TriggerScreenshot():Promise<void>;

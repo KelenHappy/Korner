@@ -98,5 +98,18 @@
     "api": "API",
     "icon": "圖標",
     "language": "語言"
+  },
+  "voiceMeeting": {
+    "title": "語音會議錄製",
+    "recording": "錄音中...",
+    "ready": "準備就緒",
+    "start": "開始錄音",
+    "stop": "停止錄音",
+    "saved": "錄音已保存",
+    "openFolder": "打開文件夾",
+    "infoTitle": "使用說明",
+    "info1": "點擊「開始錄音」開始捕獲系統音頻",
+    "info2": "錄音會保存為 WAV 格式",
+    "info3": "可用於會議記錄、語音轉文字等"
   }
 }
