@@ -31,6 +31,7 @@ type AppSettings struct {
 	APIKey       string `json:"apiKey"`
 	APIEndpoint  string `json:"apiEndpoint"`
 	FloatingIcon string `json:"floatingIcon"`
+	Language     string `json:"language"` // "en" or "zh-TW"
 }
 
 // NewApp creates a new App application struct
@@ -46,6 +47,7 @@ func NewApp() *App {
 			APIKey:       "dummy-key",
 			APIEndpoint:  "http://210.61.209.139:45014/v1/", // 默認端點
 			FloatingIcon: "🌸",
+			Language:     "zh-TW", // 默認語言
 		},
 		platform: platform.New(),
 		history:  historyMgr,
@@ -109,6 +111,7 @@ func (a *App) GetSettings() AppSettings {
 			APIKey:       "dummy-key",
 			APIEndpoint:  "http://210.61.209.139:45014/v1/",
 			FloatingIcon: "🌸",
+			Language:     "zh-TW",
 		}
 	}
 	return *a.settings
@@ -215,7 +218,7 @@ func (a *App) GetLastScreenshotPath() (string, error) {
 }
 
 // QueryLLM sends a query with screenshot to the configured LLM provider
-func (a *App) QueryLLM(query string, screenshotBase64 string) (string, error) {
+func (a *App) QueryLLM(query string, screenshotBase64 string, language string) (string, error) {
 	ctx := a.ctx
 	if ctx == nil {
 		ctx = context.Background()
@@ -236,6 +239,14 @@ func (a *App) QueryLLM(query string, screenshotBase64 string) (string, error) {
 	var err error
 	var model string
 
+	// Use provided language or fall back to settings
+	if language == "" {
+		language = a.settings.Language
+	}
+	if language == "" {
+		language = "zh-TW" // Default to Chinese
+	}
+
 	switch a.settings.APIProvider {
 	case "gptoss":
 		// GPT-OSS-120B (默認優先)
@@ -244,22 +255,22 @@ func (a *App) QueryLLM(query string, screenshotBase64 string) (string, error) {
 			endpoint = "http://210.61.209.139:45014/v1/"
 		}
 		model = "gpt-oss-120b"
-		result, err = llm.QueryGPTOSS(ctx, query, screenshotBase64, a.settings.APIKey, endpoint)
+		result, err = llm.QueryGPTOSS(ctx, query, screenshotBase64, a.settings.APIKey, endpoint, language)
 	case "openai":
 		model = "gpt-4-vision-preview"
-		result, err = llm.QueryOpenAI(ctx, query, screenshotBase64, a.settings.APIKey, model)
+		result, err = llm.QueryOpenAI(ctx, query, screenshotBase64, a.settings.APIKey, model, language)
 	case "anthropic":
 		model = "claude-3-5-sonnet"
-		result, err = llm.QueryAnthropic(ctx, query, screenshotBase64, a.settings.APIKey)
+		result, err = llm.QueryAnthropic(ctx, query, screenshotBase64, a.settings.APIKey, language)
 	case "gemini":
 		model = "gemini-2.0-flash-lite"
-		result, err = llm.QueryGemini(ctx, query, screenshotBase64, a.settings.APIKey)
+		result, err = llm.QueryGemini(ctx, query, screenshotBase64, a.settings.APIKey, language)
 	case "custom":
 		if a.settings.APIEndpoint == "" {
 			return "", fmt.Errorf("custom API endpoint not configured")
 		}
 		model = "custom"
-		result, err = llm.QueryCustom(ctx, query, screenshotBase64, a.settings.APIKey, a.settings.APIEndpoint)
+		result, err = llm.QueryCustom(ctx, query, screenshotBase64, a.settings.APIKey, a.settings.APIEndpoint, language)
 	default:
 		return "", fmt.Errorf("unsupported API provider: %s", a.settings.APIProvider)
 	}

@@ -89,7 +89,8 @@ export default {
             apiProvider: 'openai',
             apiKey: '',
             apiEndpoint: '',
-            floatingIcon: '🌸'
+            floatingIcon: '🌸',
+            language: 'zh-TW'
         };
 
         const settings = reactive({
@@ -117,6 +118,7 @@ export default {
 
         const changeLanguage = (lang) => {
             locale.value = lang;
+            settings.language = lang;
             try {
                 localStorage.setItem('korner-language', lang);
             } catch (e) {

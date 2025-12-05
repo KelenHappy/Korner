@@ -507,9 +507,21 @@ export default {
                 let response;
                 if (window.go && window.go.main && window.go.main.App) {
                     console.log("[Korner] Sending query to backend...");
+                    // Get current language from localStorage or settings
+                    let currentLanguage = settings.value.language || "zh-TW";
+                    try {
+                        const savedLang = localStorage.getItem('korner-language');
+                        if (savedLang) {
+                            currentLanguage = savedLang;
+                        }
+                    } catch (e) {
+                        console.log("[Korner] Could not read language from localStorage");
+                    }
+                    
                     response = await window.go.main.App.QueryLLM(
                         queryText,
                         screenshotB64,
+                        currentLanguage,
                     );
                     console.log("[Korner] Received response from backend");
                 } else {

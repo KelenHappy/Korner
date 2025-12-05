@@ -85,7 +85,7 @@ func getModelName(baseURL string, apiKey string) (string, error) {
 }
 
 // QueryGPTOSS calls AMD GPT-OSS-120B via vLLM endpoint
-func QueryGPTOSS(ctx context.Context, query string, screenshotBase64 string, apiKey string, endpoint string) (string, error) {
+func QueryGPTOSS(ctx context.Context, query string, screenshotBase64 string, apiKey string, endpoint string, language string) (string, error) {
 	if endpoint == "" {
 		endpoint = "http://210.61.209.139:45014/v1/chat/completions"
 	} else if !strings.HasSuffix(endpoint, "/chat/completions") {
@@ -107,13 +107,24 @@ func QueryGPTOSS(ctx context.Context, query string, screenshotBase64 string, api
 		modelName = "gpt-oss-120b" // Fallback to default
 	}
 
+	// Build system prompt based on language
+	systemPrompt := "You are a helpful AI assistant. Provide clear, direct answers without showing your reasoning process. When analyzing images, describe what you see concisely and accurately."
+	if language == "zh-TW" || language == "zh" {
+		systemPrompt = "你是一個有幫助的 AI 助手。請直接提供清晰的答案，不要顯示推理過程。分析圖片時，簡潔準確地描述你看到的內容。請用繁體中文回答所有問題。"
+	}
+
+	// Detect if user query is in Chinese, override language setting
+	if containsChinese(query) {
+		systemPrompt = "你是一個有幫助的 AI 助手。請直接提供清晰的答案，不要顯示推理過程。分析圖片時，簡潔準確地描述你看到的內容。請用繁體中文回答所有問題。"
+	}
+
 	messages := []OpenAIMessage{
 		{
 			Role: "system",
 			Content: []OpenAIContent{
 				{
 					Type: "text",
-					Text: "You are a helpful AI assistant. Analyze images and answer questions accurately. When an image is provided, describe what you see in detail.",
+					Text: systemPrompt,
 				},
 			},
 		},
@@ -141,12 +152,21 @@ func QueryGPTOSS(ctx context.Context, query string, screenshotBase64 string, api
 		log.Printf("[GPT-OSS] No image provided")
 	}
 
+	// Build request payload
+	// Note: Some vLLM servers may not support all OpenAI parameters
+	// Start with basic parameters and add more if needed
 	reqPayload := OpenAIRequest{
 		Model:       modelName,
 		Messages:    messages,
 		MaxTokens:   2048,
 		Temperature: 0.7,
 	}
+	
+	// Optionally add advanced parameters (may not be supported by all vLLM servers)
+	// Uncomment if your vLLM server supports these:
+	// reqPayload.TopP = 0.9
+	// reqPayload.FrequencyPenalty = 0.3
+	// reqPayload.PresencePenalty = 0.3
 
 	log.Printf("[GPT-OSS] Using model: %s", modelName)
 
@@ -190,6 +210,21 @@ func QueryGPTOSS(ctx context.Context, query string, screenshotBase64 string, api
 	}
 
 	responseText := strings.TrimSpace(result.Choices[0].Message.Content)
-	log.Printf("[GPT-OSS] Success! Response length: %d", len(responseText))
+	log.Printf("[GPT-OSS] Raw response length: %d", len(responseText))
+	
+	if responseText == "" {
+		log.Printf("[GPT-OSS] WARNING: Empty response from API")
+		return "", errors.New("empty response from API")
+	}
+	
+	// Clean up internal reasoning markers from the response
+	originalText := responseText
+	responseText = cleanResponseText(responseText)
+	
+	if responseText != originalText {
+		log.Printf("[GPT-OSS] Cleaned response (removed %d chars)", len(originalText)-len(responseText))
+	}
+	
+	log.Printf("[GPT-OSS] Success! Final response length: %d", len(responseText))
 	return responseText, nil
 }

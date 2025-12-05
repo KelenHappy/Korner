@@ -35,7 +35,7 @@ export function OpenDevTools():Promise<void>;
 
 export function PositionWindowAt(arg1:number,arg2:number):Promise<void>;
 
-export function QueryLLM(arg1:string,arg2:string):Promise<string>;
+export function QueryLLM(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function SaveSettings(arg1:main.AppSettings):Promise<void>;
 

@@ -66,8 +66,8 @@ export function PositionWindowAt(arg1, arg2) {
   return window['go']['main']['App']['PositionWindowAt'](arg1, arg2);
 }
 
-export function QueryLLM(arg1, arg2) {
-  return window['go']['main']['App']['QueryLLM'](arg1, arg2);
+export function QueryLLM(arg1, arg2, arg3) {
+  return window['go']['main']['App']['QueryLLM'](arg1, arg2, arg3);
 }
 
 export function SaveSettings(arg1) {
