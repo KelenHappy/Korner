@@ -8,6 +8,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "marked": "^17.0.1",
     "vue": "^3.4.21",
     "vue-i18n": "^9.14.5"
   },

@@ -9,7 +9,8 @@
             <strong>{{ questionLabel }}</strong>{{ conversation.question }}
         </div>
         <div class="conv-answer">
-            <strong>{{ answerLabel }}</strong>{{ conversation.answer }}
+            <strong>{{ answerLabel }}</strong>
+            <div class="answer-content markdown-body" v-html="renderedAnswer"></div>
         </div>
         <div v-if="conversation.screenshot_path" class="conv-screenshot">
             📷 {{ screenshotLabel }}{{ fileName }}
@@ -19,6 +20,7 @@
 
 <script>
 import { computed } from 'vue';
+import { marked } from 'marked';
 
 export default {
     name: 'ConversationItem',
@@ -58,9 +60,15 @@ export default {
             return props.conversation.screenshot_path.split(/[\\/]/).pop();
         });
 
+        const renderedAnswer = computed(() => {
+            if (!props.conversation.answer) return '';
+            return marked(props.conversation.answer, { breaks: true });
+        });
+
         return {
             formattedTime,
-            fileName
+            fileName,
+            renderedAnswer
         };
     }
 };
@@ -140,5 +148,57 @@ export default {
     margin-top: 8px;
     padding-top: 8px;
     border-top: 1px solid #e2e8f0;
+}
+
+/* Markdown styles */
+.answer-content.markdown-body :deep(table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0;
+    font-size: 12px;
+}
+
+.answer-content.markdown-body :deep(th),
+.answer-content.markdown-body :deep(td) {
+    border: 1px solid #e2e8f0;
+    padding: 4px 8px;
+    text-align: left;
+}
+
+.answer-content.markdown-body :deep(th) {
+    background: #f1f5f9;
+    font-weight: 600;
+}
+
+.answer-content.markdown-body :deep(p) {
+    margin: 6px 0;
+}
+
+.answer-content.markdown-body :deep(ul),
+.answer-content.markdown-body :deep(ol) {
+    margin: 6px 0;
+    padding-left: 20px;
+}
+
+.answer-content.markdown-body :deep(h1),
+.answer-content.markdown-body :deep(h2),
+.answer-content.markdown-body :deep(h3) {
+    margin: 10px 0 6px 0;
+    font-weight: 600;
+}
+
+.answer-content.markdown-body :deep(code) {
+    background: #f1f5f9;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.answer-content.markdown-body :deep(pre) {
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 10px;
+    border-radius: 6px;
+    overflow-x: auto;
 }
 </style>

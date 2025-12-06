@@ -33,12 +33,11 @@ func cleanResponseText(text string) string {
 	cleaned := text
 	
 	// Strategy 1: Look for "assistantfinal" marker and extract everything after it
-	// This is the most reliable way to get the actual response
-	markers := []string{"assistantfinal", "assistant"}
+	// This handles formats like "analysis...assistantfinal<actual response>"
+	markers := []string{"assistantfinal", "assistant_final", "final_response"}
 	for _, marker := range markers {
-		// Case-insensitive search
 		lowerText := strings.ToLower(cleaned)
-		idx := strings.Index(lowerText, strings.ToLower(marker))
+		idx := strings.Index(lowerText, marker)
 		if idx != -1 {
 			// Extract everything after the marker
 			afterMarker := cleaned[idx+len(marker):]
@@ -50,62 +49,61 @@ func cleanResponseText(text string) string {
 		}
 	}
 	
-	// Strategy 2: Remove common prefixes like "analysis", "User says", etc.
-	prefixPatterns := []string{
-		"analysis",
-		"user says",
-		"user asks",
-		"we need to",
-		"need to respond",
-		"<think>",
-		"</think>",
-		"<reasoning>",
-		"</reasoning>",
+	// Strategy 2: Remove <think>...</think> blocks (DeepSeek-style reasoning)
+	for {
+		startIdx := strings.Index(strings.ToLower(cleaned), "<think>")
+		if startIdx == -1 {
+			break
+		}
+		endIdx := strings.Index(strings.ToLower(cleaned[startIdx:]), "</think>")
+		if endIdx == -1 {
+			// No closing tag, remove from <think> to end of line
+			lineEnd := strings.Index(cleaned[startIdx:], "\n")
+			if lineEnd != -1 {
+				cleaned = cleaned[:startIdx] + cleaned[startIdx+lineEnd+1:]
+			} else {
+				cleaned = cleaned[:startIdx]
+			}
+		} else {
+			// Remove the entire <think>...</think> block
+			cleaned = cleaned[:startIdx] + cleaned[startIdx+endIdx+len("</think>"):]
+		}
 	}
 	
-	maxIterations := 10
-	for i := 0; i < maxIterations; i++ {
-		found := false
+	// Strategy 3: Remove <reasoning>...</reasoning> blocks
+	for {
+		startIdx := strings.Index(strings.ToLower(cleaned), "<reasoning>")
+		if startIdx == -1 {
+			break
+		}
+		endIdx := strings.Index(strings.ToLower(cleaned[startIdx:]), "</reasoning>")
+		if endIdx == -1 {
+			lineEnd := strings.Index(cleaned[startIdx:], "\n")
+			if lineEnd != -1 {
+				cleaned = cleaned[:startIdx] + cleaned[startIdx+lineEnd+1:]
+			} else {
+				cleaned = cleaned[:startIdx]
+			}
+		} else {
+			cleaned = cleaned[:startIdx] + cleaned[startIdx+endIdx+len("</reasoning>"):]
+		}
+	}
+	
+	// Strategy 4: Remove common reasoning prefixes at the start
+	// (like "analysis", "thinking", etc. that appear before the actual response)
+	prefixes := []string{"analysis", "thinking", "reasoning"}
+	for _, prefix := range prefixes {
 		lowerCleaned := strings.ToLower(cleaned)
-		
-		for _, pattern := range prefixPatterns {
-			if strings.HasPrefix(lowerCleaned, pattern) {
-				cleaned = cleaned[len(pattern):]
-				cleaned = strings.TrimSpace(cleaned)
-				found = true
+		if strings.HasPrefix(lowerCleaned, prefix) {
+			// Find where the actual numbered list starts (e.g., "1. ")
+			if idx := strings.Index(cleaned, "1."); idx != -1 && idx < 500 {
+				cleaned = cleaned[idx:]
 				break
 			}
 		}
-		
-		if !found {
-			break
-		}
 	}
 	
-	// Strategy 3: If text starts with a sentence describing what to do,
-	// try to find where the actual response starts (usually after a period or newline)
-	if strings.Contains(strings.ToLower(cleaned[:min(100, len(cleaned))]), "respond") ||
-		strings.Contains(strings.ToLower(cleaned[:min(100, len(cleaned))]), "answer") {
-		
-		// Look for the first sentence break followed by actual content
-		for i := 0; i < len(cleaned)-1; i++ {
-			if cleaned[i] == '.' || cleaned[i] == '!' || cleaned[i] == '?' {
-				// Check if next part looks like actual response (starts with capital or Chinese)
-				remaining := strings.TrimSpace(cleaned[i+1:])
-				if len(remaining) > 0 {
-					firstChar := []rune(remaining)[0]
-					// If starts with capital letter or Chinese character, this is likely the response
-					if (firstChar >= 'A' && firstChar <= 'Z') || (firstChar >= 0x4E00 && firstChar <= 0x9FFF) {
-						cleaned = remaining
-						break
-					}
-				}
-			}
-		}
-	}
-	
-	// Remove any leading special characters or artifacts
-	cleaned = strings.TrimLeft(cleaned, ".:;,!?-_=+")
+	// Trim whitespace but preserve internal formatting
 	cleaned = strings.TrimSpace(cleaned)
 	
 	// If we accidentally removed everything, return original

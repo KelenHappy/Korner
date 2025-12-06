@@ -259,23 +259,17 @@ func (a *App) QueryLLM(query string, screenshotBase64 string, language string) (
 		}
 		model = "gpt-oss-120b"
 		result, err = llm.QueryGPTOSS(ctx, query, screenshotBase64, a.settings.APIKey, endpoint, language)
-	case "openai":
-		model = "gpt-4-vision-preview"
-		result, err = llm.QueryOpenAI(ctx, query, screenshotBase64, a.settings.APIKey, model, language)
-	case "anthropic":
-		model = "claude-3-5-sonnet"
-		result, err = llm.QueryAnthropic(ctx, query, screenshotBase64, a.settings.APIKey, language)
 	case "gemini":
 		model = "gemini-2.0-flash-lite"
 		result, err = llm.QueryGemini(ctx, query, screenshotBase64, a.settings.APIKey, language)
-	case "custom":
-		if a.settings.APIEndpoint == "" {
-			return "", fmt.Errorf("custom API endpoint not configured")
-		}
-		model = "custom"
-		result, err = llm.QueryCustom(ctx, query, screenshotBase64, a.settings.APIKey, a.settings.APIEndpoint, language)
 	default:
-		return "", fmt.Errorf("unsupported API provider: %s", a.settings.APIProvider)
+		// Default to GPT-OSS
+		endpoint := a.settings.APIEndpoint
+		if endpoint == "" {
+			endpoint = "http://210.61.209.139:45014/v1/"
+		}
+		model = "gpt-oss-120b"
+		result, err = llm.QueryGPTOSS(ctx, query, screenshotBase64, a.settings.APIKey, endpoint, language)
 	}
 
 	if err != nil {

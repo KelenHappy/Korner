@@ -108,15 +108,23 @@ func QueryGPTOSS(ctx context.Context, query string, screenshotBase64 string, api
 	}
 
 	// Build system prompt based on language
-	systemPrompt := "You are a helpful AI assistant. Provide clear, direct answers without showing your reasoning process. When analyzing images, describe what you see concisely and accurately."
-	if language == "zh-TW" || language == "zh" {
-		systemPrompt = "你是一個有幫助的 AI 助手。請直接提供清晰的答案，不要顯示推理過程。分析圖片時，簡潔準確地描述你看到的內容。請用繁體中文回答所有問題。"
-	}
+	// Use plain text format only (no markdown)
+	systemPrompt := `You are a helpful AI assistant. Follow these rules:
+1. Use plain text format and \n only, no markdown syntax
+2. Use numbered lists (1. 2. 3.) for steps or items
+3. Use blank lines to separate sections
+4. Provide clear, direct answers
+5. When analyzing images, describe what you see concisely`
 
-	// Detect if user query is in Chinese, override language setting
-	if containsChinese(query) {
-		systemPrompt = "你是一個有幫助的 AI 助手。請直接提供清晰的答案，不要顯示推理過程。分析圖片時，簡潔準確地描述你看到的內容。請用繁體中文回答所有問題。"
-	}
+if language == "zh-TW" || language == "zh" || containsChinese(query) {
+    systemPrompt = `你是 AI 助手。規則：
+1. 純文字和\n，不用 Markdown
+2. 用數字列表（1. 2. 3.）
+3. 空行分段
+4. 直接回答
+5. 簡潔描述圖片
+6. 用繁體中文回答`
+}
 
 	messages := []OpenAIMessage{
 		{
@@ -217,12 +225,24 @@ func QueryGPTOSS(ctx context.Context, query string, screenshotBase64 string, api
 		return "", errors.New("empty response from API")
 	}
 	
+	// Log first 200 chars to see the format
+	preview := responseText
+	if len(preview) > 200 {
+		preview = preview[:200] + "..."
+	}
+	log.Printf("[GPT-OSS] Raw response preview: %q", preview)
+	
 	// Clean up internal reasoning markers from the response
 	originalText := responseText
 	responseText = cleanResponseText(responseText)
 	
 	if responseText != originalText {
 		log.Printf("[GPT-OSS] Cleaned response (removed %d chars)", len(originalText)-len(responseText))
+		cleanedPreview := responseText
+		if len(cleanedPreview) > 200 {
+			cleanedPreview = cleanedPreview[:200] + "..."
+		}
+		log.Printf("[GPT-OSS] Cleaned response preview: %q", cleanedPreview)
 	}
 	
 	log.Printf("[GPT-OSS] Success! Final response length: %d", len(responseText))

@@ -26,7 +26,7 @@
                     <p class="loading-text">Thinking...</p>
                 </div>
 
-                <!-- Response Display -->
+                <!-- Response Display (Plain text) -->
                 <div v-else-if="message" class="chat-text">{{ message }}</div>
 
                 <!-- Empty State -->

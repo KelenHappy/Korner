@@ -112,7 +112,7 @@ export default {
 
 .message-ai .message-text {
     background: #ffffff;
-    color: #6b7280;
+    color: #374151;
     border: 1px solid rgba(0, 0, 0, 0.06);
     border-top-left-radius: 4px;
 }
