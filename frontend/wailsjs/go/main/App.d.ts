@@ -11,6 +11,8 @@ export function DeleteHistoryItem(arg1:string):Promise<void>;
 
 export function ExportHistoryToText(arg1:string):Promise<void>;
 
+export function GenerateMeetingSummary(arg1:string):Promise<string>;
+
 export function GetAllHistory():Promise<Array<history.Conversation>>;
 
 export function GetDPIScale():Promise<number>;

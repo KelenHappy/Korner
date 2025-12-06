@@ -18,6 +18,10 @@ export function ExportHistoryToText(arg1) {
   return window['go']['main']['App']['ExportHistoryToText'](arg1);
 }
 
+export function GenerateMeetingSummary(arg1) {
+  return window['go']['main']['App']['GenerateMeetingSummary'](arg1);
+}
+
 export function GetAllHistory() {
   return window['go']['main']['App']['GetAllHistory']();
 }

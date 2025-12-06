@@ -2,7 +2,7 @@
     <div id="app" class="app-container">
         <!-- Floating Icon (hidden during screenshot and when pie menu is open) -->
         <FloatingIcon
-            v-if="!showScreenshotOverlay && !showPieMenu"
+            v-if="!showScreenshotOverlay && !showPieMenu && !showVoiceMeetingWindow"
             :icon="settings.floatingIcon"
             @show-menu="showPieMenuAt"
         />
@@ -604,13 +604,20 @@ export default {
             showPieMenu.value = false;
             await new Promise((resolve) => setTimeout(resolve, 250));
 
-            // 調整視窗大小並置中
+            // 保持窗口在原位置，只調整大小為可以容納錄音控制的大小
             try {
-                WindowSetSize(700, 600);
-                await new Promise((resolve) => setTimeout(resolve, 100));
-                WindowCenter();
+                // 窗口大小：寬150px，高250px（足夠放返回按鈕+錄音按鈕+操作按鈕）
+                WindowSetSize(150, 250);
+                
+                // 保持在原位置（貓咪的位置）
+                if (iconScreenPos.value) {
+                    WindowSetPosition(
+                        iconScreenPos.value.x - 75,  // 置中
+                        iconScreenPos.value.y - 125  // 置中
+                    );
+                }
             } catch (error) {
-                console.log("Failed to resize/center window:", error);
+                console.log("Failed to resize/position window:", error);
             }
 
             // 顯示語音會議窗口

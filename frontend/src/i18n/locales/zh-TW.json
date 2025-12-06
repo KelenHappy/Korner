@@ -107,6 +107,8 @@
     "stop": "停止錄音",
     "saved": "錄音已保存",
     "openFolder": "打開文件夾",
+    "meetingSummary": "會議摘要",
+    "processing": "處理中...",
     "infoTitle": "使用說明",
     "info1": "點擊「開始錄音」開始捕獲系統音頻",
     "info2": "錄音會保存為 WAV 格式",

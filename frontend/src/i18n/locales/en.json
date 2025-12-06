@@ -107,6 +107,8 @@
     "stop": "Stop Recording",
     "saved": "Recording saved",
     "openFolder": "Open Folder",
+    "meetingSummary": "Meeting Summary",
+    "processing": "Processing...",
     "infoTitle": "Instructions",
     "info1": "Click 'Start Recording' to capture system audio",
     "info2": "Recording will be saved as WAV format",

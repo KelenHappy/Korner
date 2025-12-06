@@ -1,65 +1,57 @@
 <template>
-    <div class="voice-meeting-window">
-        <div class="voice-meeting-content">
-            <div class="voice-header">
-                <h2>🎤 {{ t('voiceMeeting.title') }}</h2>
-                <button class="close-btn" @click="$emit('close')">✕</button>
-            </div>
+    <Teleport to="body">
+        <div class="voice-meeting-widget">
+            <!-- 返回按鈕 (灰色) -->
+            <button 
+                class="bubble-btn back" 
+                @click="$emit('close')"
+                :title="t('voiceMeeting.back') || '返回'"
+            >
+                <span class="bubble-icon">✕</span>
+            </button>
 
-            <div class="voice-body">
-                <div class="recording-status">
-                    <div class="status-indicator" :class="{ recording: isRecording }">
-                        <div class="pulse"></div>
-                        <span class="status-icon">{{ isRecording ? '🔴' : '⚪' }}</span>
-                    </div>
-                    <div class="status-text">
-                        <h3>{{ isRecording ? t('voiceMeeting.recording') : t('voiceMeeting.ready') }}</h3>
-                        <p v-if="isRecording" class="duration">{{ formatDuration(duration) }}</p>
-                    </div>
-                </div>
-
-                <div class="controls">
-                    <button 
-                        v-if="!isRecording" 
-                        class="record-btn start"
-                        @click="startRecording"
-                    >
-                        <span class="btn-icon">🎙️</span>
-                        <span>{{ t('voiceMeeting.start') }}</span>
-                    </button>
-                    <button 
-                        v-else 
-                        class="record-btn stop"
-                        @click="stopRecording"
-                    >
-                        <span class="btn-icon">⏹️</span>
-                        <span>{{ t('voiceMeeting.stop') }}</span>
-                    </button>
-                </div>
-
-                <div v-if="savedFile" class="saved-info">
-                    <p class="success-msg">✅ {{ t('voiceMeeting.saved') }}</p>
-                    <p class="file-path">{{ savedFile }}</p>
-                    <button class="open-folder-btn" @click="openFolder">
-                        📁 {{ t('voiceMeeting.openFolder') }}
-                    </button>
-                </div>
-
-                <div v-if="errorMsg" class="error-info">
-                    <p class="error-msg">❌ {{ errorMsg }}</p>
-                </div>
-
-                <div class="info-section">
-                    <h4>{{ t('voiceMeeting.infoTitle') }}</h4>
-                    <ul>
-                        <li>{{ t('voiceMeeting.info1') }}</li>
-                        <li>{{ t('voiceMeeting.info2') }}</li>
-                        <li>{{ t('voiceMeeting.info3') }}</li>
-                    </ul>
+            <!-- 錄音指示器 -->
+            <div 
+                class="record-indicator" 
+                :class="{ recording: isRecording, stopped: savedFile }"
+                @click="toggleRecording"
+                :title="isRecording ? t('voiceMeeting.stop') : t('voiceMeeting.start')"
+            >
+                <div v-if="isRecording" class="pulse-ring"></div>
+                <div class="record-dot">
+                    <span v-if="isRecording" class="duration-text">{{ formatDuration(duration) }}</span>
                 </div>
             </div>
+
+            <!-- 操作按鈕 (錄音完成後顯示) -->
+            <transition name="bubble-fade">
+                <div v-if="savedFile && !isRecording" class="action-bubbles">
+                    <button 
+                        class="bubble-btn summary" 
+                        @click="generateMeetingSummary"
+                        :disabled="isProcessing"
+                        :title="t('voiceMeeting.meetingSummary')"
+                    >
+                        <span class="bubble-icon">📝</span>
+                    </button>
+                    <button 
+                        class="bubble-btn folder" 
+                        @click="openFolder"
+                        :title="t('voiceMeeting.openFolder')"
+                    >
+                        <span class="bubble-icon">📁</span>
+                    </button>
+                </div>
+            </transition>
+
+            <!-- 錯誤提示 -->
+            <transition name="fade">
+                <div v-if="errorMsg" class="error-toast">
+                    {{ errorMsg }}
+                </div>
+            </transition>
         </div>
-    </div>
+    </Teleport>
 </template>
 
 <script>
@@ -75,17 +67,21 @@ export default {
         const duration = ref(0);
         const savedFile = ref('');
         const errorMsg = ref('');
+        const isProcessing = ref(false);
         let durationInterval = null;
 
         const startRecording = async () => {
+            console.log('[VoiceMeeting] Start recording button clicked');
             try {
                 errorMsg.value = '';
                 savedFile.value = '';
                 
                 if (window.go && window.go.main && window.go.main.App) {
+                    console.log('[VoiceMeeting] Calling backend StartRecording...');
                     await window.go.main.App.StartRecording();
                     isRecording.value = true;
                     duration.value = 0;
+                    console.log('[VoiceMeeting] Recording started successfully');
                     
                     // Start duration counter
                     durationInterval = setInterval(async () => {
@@ -94,15 +90,17 @@ export default {
                         }
                     }, 100);
                 } else {
+                    console.error('[VoiceMeeting] Backend not available');
                     errorMsg.value = 'Backend not available';
                 }
             } catch (error) {
-                console.error('Failed to start recording:', error);
+                console.error('[VoiceMeeting] Failed to start recording:', error);
                 errorMsg.value = String(error);
             }
         };
 
         const stopRecording = async () => {
+            console.log('[VoiceMeeting] Stop recording button clicked');
             try {
                 if (durationInterval) {
                     clearInterval(durationInterval);
@@ -110,16 +108,27 @@ export default {
                 }
                 
                 if (window.go && window.go.main && window.go.main.App) {
+                    console.log('[VoiceMeeting] Calling backend StopRecording...');
                     const filePath = await window.go.main.App.StopRecording();
                     isRecording.value = false;
                     savedFile.value = filePath;
+                    console.log('[VoiceMeeting] Recording stopped, file:', filePath);
                 } else {
+                    console.error('[VoiceMeeting] Backend not available');
                     errorMsg.value = 'Backend not available';
                 }
             } catch (error) {
-                console.error('Failed to stop recording:', error);
+                console.error('[VoiceMeeting] Failed to stop recording:', error);
                 errorMsg.value = String(error);
                 isRecording.value = false;
+            }
+        };
+
+        const toggleRecording = () => {
+            if (isRecording.value) {
+                stopRecording();
+            } else {
+                startRecording();
             }
         };
 
@@ -133,19 +142,52 @@ export default {
             if (durationInterval) {
                 clearInterval(durationInterval);
             }
-            // Stop recording if still recording
             if (isRecording.value) {
                 stopRecording();
             }
         });
 
+        const generateMeetingSummary = async () => {
+            console.log('[VoiceMeeting] Generate meeting summary button clicked');
+            try {
+                isProcessing.value = true;
+                errorMsg.value = '';
+                
+                if (window.go && window.go.main && window.go.main.App) {
+                    console.log('[VoiceMeeting] Calling backend GenerateMeetingSummary...');
+                    const summary = await window.go.main.App.GenerateMeetingSummary(savedFile.value);
+                    console.log('[VoiceMeeting] Summary generated:', summary.substring(0, 100));
+                    
+                    // 發送摘要到聊天窗口
+                    if (window.sendMessageToChat) {
+                        window.sendMessageToChat(summary);
+                    }
+                    
+                    // 關閉錄音窗口並返回
+                    emit('close');
+                } else {
+                    errorMsg.value = 'Backend not available';
+                }
+            } catch (error) {
+                console.error('Failed to generate meeting summary:', error);
+                errorMsg.value = String(error);
+            } finally {
+                isProcessing.value = false;
+            }
+        };
+
         const openFolder = async () => {
+            console.log('[VoiceMeeting] Open folder button clicked');
             try {
                 if (window.go && window.go.main && window.go.main.App) {
                     await window.go.main.App.OpenRecordingFolder();
+                    console.log('[VoiceMeeting] Folder opened');
                 }
+                
+                // 打開資料夾後也關閉窗口並返回
+                emit('close');
             } catch (error) {
-                console.error('Failed to open folder:', error);
+                console.error('[VoiceMeeting] Failed to open folder:', error);
                 errorMsg.value = String(error);
             }
         };
@@ -156,255 +198,224 @@ export default {
             duration,
             savedFile,
             errorMsg,
-            startRecording,
-            stopRecording,
+            isProcessing,
+            toggleRecording,
             formatDuration,
             openFolder,
+            generateMeetingSummary,
         };
     },
 };
 </script>
 
 <style scoped>
-.voice-meeting-window {
+.voice-meeting-widget {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.5);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9999;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    z-index: 10000;
+    gap: 12px;
 }
 
-.voice-meeting-content {
-    background: white;
-    border-radius: 16px;
-    width: 90%;
-    max-width: 600px;
-    max-height: 90vh;
-    overflow: hidden;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-}
-
-.voice-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 24px;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.voice-header h2 {
-    font-size: 20px;
-    font-weight: 600;
-    color: #1f2937;
-    margin: 0;
-}
-
-.close-btn {
-    background: none;
-    border: none;
-    font-size: 24px;
-    color: #6b7280;
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 4px;
-    transition: all 0.2s;
-}
-
-.close-btn:hover {
-    background: #f3f4f6;
-    color: #1f2937;
-}
-
-.voice-body {
-    padding: 32px 24px;
-}
-
-.recording-status {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 20px;
-    margin-bottom: 32px;
-}
-
-.status-indicator {
+/* 錄音指示器 */
+.record-indicator {
     position: relative;
-    width: 80px;
-    height: 80px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    width: 35px;
+    height: 35px;
+    cursor: pointer;
+    transition: transform 0.2s;
 }
 
-.status-indicator .pulse {
+.record-indicator:hover {
+    transform: scale(1.1);
+}
+
+.record-indicator:active {
+    transform: scale(0.95);
+}
+
+/* 脈衝環 */
+.pulse-ring {
     position: absolute;
-    width: 100%;
-    height: 100%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 35px;
+    height: 35px;
     border-radius: 50%;
-    background: #e5e7eb;
-    opacity: 0;
+    background: rgba(239, 68, 68, 0.3);
+    animation: pulse-animation 1.5s ease-out infinite;
 }
 
-.status-indicator.recording .pulse {
-    animation: pulse 2s ease-out infinite;
-}
-
-@keyframes pulse {
+@keyframes pulse-animation {
     0% {
-        transform: scale(0.8);
-        opacity: 0.8;
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
     }
     100% {
-        transform: scale(1.5);
+        transform: translate(-50%, -50%) scale(2);
         opacity: 0;
     }
 }
 
-.status-icon {
-    font-size: 48px;
-    z-index: 1;
-}
-
-.status-text h3 {
-    font-size: 18px;
-    font-weight: 600;
-    color: #1f2937;
-    margin: 0 0 8px 0;
-}
-
-.duration {
-    font-size: 24px;
-    font-weight: 700;
-    color: #ef4444;
-    font-family: 'Courier New', monospace;
-    margin: 0;
-}
-
-.controls {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 24px;
-}
-
-.record-btn {
+/* 紅點 */
+.record-dot {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background: #ef4444;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5);
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 16px 32px;
-    border: none;
-    border-radius: 12px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
+    justify-content: center;
+    transition: all 0.3s;
 }
 
-.record-btn.start {
+.record-indicator:not(.recording) .record-dot {
     background: #10b981;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5);
+}
+
+.record-indicator.stopped .record-dot {
+    background: #6b7280;
+    box-shadow: 0 4px 12px rgba(107, 114, 128, 0.5);
+}
+
+/* 時間顯示 */
+.duration-text {
+    font-size: 8px;
+    font-weight: 700;
     color: white;
+    font-family: 'Courier New', monospace;
 }
 
-.record-btn.start:hover {
-    background: #059669;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+/* 操作按鈕 */
+.action-bubbles {
+    display: flex;
+    gap: 10px;
+    animation: bubble-slide-up 0.3s ease-out;
 }
 
-.record-btn.stop {
-    background: #ef4444;
-    color: white;
+@keyframes bubble-slide-up {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
-.record-btn.stop:hover {
-    background: #dc2626;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
-}
-
-.btn-icon {
-    font-size: 20px;
-}
-
-.saved-info, .error-info {
-    padding: 16px;
-    border-radius: 8px;
-    margin-bottom: 24px;
-}
-
-.saved-info {
-    background: #d1fae5;
-    border: 1px solid #10b981;
-}
-
-.error-info {
-    background: #fee2e2;
-    border: 1px solid #ef4444;
-}
-
-.success-msg, .error-msg {
-    font-weight: 600;
-    margin: 0 0 8px 0;
-}
-
-.success-msg {
-    color: #065f46;
-}
-
-.error-msg {
-    color: #991b1b;
-    margin: 0;
-}
-
-.file-path {
-    font-size: 12px;
-    color: #047857;
-    word-break: break-all;
-    margin: 0 0 12px 0;
-}
-
-.open-folder-btn {
-    background: #10b981;
-    color: white;
+.bubble-btn {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
     border: none;
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 600;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     transition: all 0.2s;
+    pointer-events: auto;
 }
 
-.open-folder-btn:hover {
-    background: #059669;
+.bubble-btn:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.bubble-btn:active:not(:disabled) {
     transform: translateY(-1px);
 }
 
-.info-section {
-    background: #f9fafb;
-    padding: 16px;
+.bubble-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.bubble-btn.back {
+    background: #6b7280;
+}
+
+.bubble-btn.back:hover:not(:disabled) {
+    background: #4b5563;
+}
+
+.bubble-btn.summary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.bubble-btn.folder {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.bubble-icon {
+    font-size: 16px;
+}
+
+/* 錯誤提示 */
+.error-toast {
+    position: fixed;
+    top: 50%;
+    right: 100px;
+    transform: translateY(-50%);
+    background: #fee2e2;
+    color: #991b1b;
+    padding: 12px 16px;
     border-radius: 8px;
-}
-
-.info-section h4 {
-    font-size: 14px;
+    border: 1px solid #ef4444;
+    font-size: 12px;
     font-weight: 600;
-    color: #374151;
-    margin: 0 0 12px 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    max-width: 250px;
+    word-break: break-word;
+    animation: toast-slide-in 0.3s ease-out;
 }
 
-.info-section ul {
-    margin: 0;
-    padding-left: 20px;
+@keyframes toast-slide-in {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
 }
 
-.info-section li {
-    font-size: 13px;
-    color: #6b7280;
-    margin-bottom: 8px;
+/* 過渡動畫 */
+.bubble-fade-enter-active,
+.bubble-fade-leave-active {
+    transition: all 0.3s ease;
+}
+
+.bubble-fade-enter-from {
+    transform: translateY(20px);
+    opacity: 0;
+}
+
+.bubble-fade-leave-to {
+    transform: translateY(-20px);
+    opacity: 0;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
 }
 </style>

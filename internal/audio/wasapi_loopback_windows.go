@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sync"
 	"time"
@@ -229,13 +230,56 @@ func (r *WASAPILoopbackRecorder) StopRecording() (string, error) {
 	// Wait for the loop to finish
 	time.Sleep(200 * time.Millisecond)
 
-	// Save to WAV file
+	// Save to temporary WAV file first
+	tempPath := r.outputPath + ".temp.wav"
+	originalPath := r.outputPath
+	r.outputPath = tempPath
+	
 	err := r.saveWAV()
 	if err != nil {
 		return "", fmt.Errorf("failed to save WAV: %w", err)
 	}
 
-	return r.outputPath, nil
+	// Convert to 16kHz using ffmpeg
+	finalPath, err := r.convertTo16kHz(tempPath, originalPath)
+	if err != nil {
+		// If conversion fails, use original file
+		fmt.Printf("Warning: ffmpeg conversion failed, using original file: %v\n", err)
+		os.Rename(tempPath, originalPath)
+		return originalPath, nil
+	}
+
+	// Clean up temp file
+	os.Remove(tempPath)
+
+	return finalPath, nil
+}
+
+// convertTo16kHz converts audio file to 16kHz WAV format using ffmpeg
+func (r *WASAPILoopbackRecorder) convertTo16kHz(inputPath, outputPath string) (string, error) {
+	// Check if ffmpeg is available
+	_, err := exec.LookPath("ffmpeg")
+	if err != nil {
+		return "", fmt.Errorf("ffmpeg not found in PATH: %w", err)
+	}
+
+	// ffmpeg -i input.wav -ar 16000 -ac 1 -sample_fmt s16 output.wav
+	cmd := exec.Command("ffmpeg", 
+		"-i", inputPath,
+		"-ar", "16000",      // 16kHz sample rate
+		"-ac", "1",          // mono
+		"-sample_fmt", "s16", // 16-bit PCM
+		"-y",                // overwrite output file
+		outputPath,
+	)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("ffmpeg conversion failed: %w, output: %s", err, string(output))
+	}
+
+	fmt.Printf("Converted audio to 16kHz: %s\n", outputPath)
+	return outputPath, nil
 }
 
 // saveWAV saves recorded audio data to WAV file
