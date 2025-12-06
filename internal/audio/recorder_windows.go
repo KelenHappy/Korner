@@ -34,24 +34,43 @@ var (
 	IID_IAudioCaptureClient  = syscall.GUID{0xC8ADBD64, 0xE71E, 0x48A0, [8]byte{0xA4, 0xDE, 0x18, 0x5C, 0x39, 0x5C, 0xD3, 0x17}}
 )
 
-// Recorder handles audio recording using ffmpeg
+// RecordMode defines what audio sources to record
+type RecordMode int
+
+const (
+	RecordMicrophone RecordMode = iota // Only microphone
+	RecordSystem                       // Only system audio
+	RecordBoth                         // Both microphone and system audio (mixed)
+)
+
+// Recorder handles audio recording using ffmpeg and WASAPI
 type Recorder struct {
-	isRecording bool
-	mu          sync.Mutex
-	startTime   time.Time
-	stopChan    chan struct{}
-	outputPath  string
-	cmd         *exec.Cmd
+	isRecording    bool
+	mu             sync.Mutex
+	startTime      time.Time
+	stopChan       chan struct{}
+	outputPath     string
+	cmd            *exec.Cmd
+	mode           RecordMode
+	wasapiRecorder *WASAPILoopbackRecorder // For system audio
+	micTempPath    string                   // Temp path for mic recording
+	sysTempPath    string                   // Temp path for system audio
 }
 
-// NewRecorder creates a new audio recorder
+// NewRecorder creates a new audio recorder with default mode (both mic + system)
 func NewRecorder() (*Recorder, error) {
+	return NewRecorderWithMode(RecordBoth)
+}
+
+// NewRecorderWithMode creates a new audio recorder with specified mode
+func NewRecorderWithMode(mode RecordMode) (*Recorder, error) {
 	return &Recorder{
 		stopChan: make(chan struct{}),
+		mode:     mode,
 	}, nil
 }
 
-// StartRecording begins recording audio using ffmpeg
+// StartRecording begins recording audio using ffmpeg (system audio + microphone mixed)
 func (r *Recorder) StartRecording() error {
 	r.mu.Lock()
 	if r.isRecording {
@@ -63,16 +82,15 @@ func (r *Recorder) StartRecording() error {
 	r.isRecording = true
 	r.stopChan = make(chan struct{})
 	
-	// Get executable directory
-	exePath, err := os.Executable()
+	// Get current working directory
+	cwd, err := os.Getwd()
 	if err != nil {
 		r.mu.Unlock()
-		return fmt.Errorf("failed to get executable path: %w", err)
+		return fmt.Errorf("failed to get working directory: %w", err)
 	}
-	exeDir := filepath.Dir(exePath)
 
-	// Create output directory
-	outputDir := filepath.Join(exeDir, "record")
+	// Create output directory in current working directory
+	outputDir := filepath.Join(cwd, "record")
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		r.mu.Unlock()
 		return fmt.Errorf("failed to create output directory: %w", err)
@@ -86,45 +104,115 @@ func (r *Recorder) StartRecording() error {
 	r.mu.Unlock()
 
 	// Try to find ffmpeg (bundled or system)
-	ffmpegPath := r.findFFmpeg(exeDir)
+	ffmpegPath := r.findFFmpeg(cwd)
 	if ffmpegPath == "" {
-		// ffmpeg not found, use PowerShell SoundRecorder as fallback
-		return r.startPowerShellRecording()
+		return fmt.Errorf("ffmpeg not found. Please install ffmpeg")
 	}
 
-	// Use ffmpeg to record from default microphone
-	// -f dshow: DirectShow (Windows)
-	// -i audio="": Use default audio input device
-	r.cmd = exec.Command(ffmpegPath,
-		"-f", "dshow",
-		"-i", "audio=",
-		"-acodec", "pcm_s16le",
-		"-ar", "44100",
-		"-ac", "2",
-		"-y", // Overwrite output file
-		r.outputPath,
-	)
+	// Use the ATR2100x USB Microphone for mic input
+	micDeviceID := "@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}\\wave_{984DAF9D-7658-4468-8B48-A8A188347AC3}"
+	
+	// Build ffmpeg command based on recording mode
+	var args []string
+	
+	switch r.mode {
+	case RecordMicrophone:
+		// Only microphone using dshow
+		args = []string{
+			"-f", "dshow",
+			"-rtbufsize", "100M",
+			"-i", fmt.Sprintf("audio=%s", micDeviceID),
+			"-acodec", "pcm_s16le",
+			"-ar", "44100",
+			"-ac", "1", // Mono
+			"-y",
+			r.outputPath,
+		}
+		fmt.Printf("Recording microphone (ATR2100x)...\n")
+		
+	case RecordSystem:
+		// System audio using WASAPI loopback (like OBS)
+		r.wasapiRecorder = NewWASAPILoopbackRecorder()
+		err := r.wasapiRecorder.StartRecording(r.outputPath)
+		if err != nil {
+			return fmt.Errorf("failed to start WASAPI loopback recording: %w", err)
+		}
+		fmt.Println("Recording system audio using WASAPI loopback (like OBS)...")
+		return nil
+		
+	case RecordBoth:
+		// Record both system audio and microphone simultaneously
+		// Create temp paths
+		timestamp := time.Now().Format("20060102_150405")
+		r.micTempPath = filepath.Join(filepath.Dir(r.outputPath), fmt.Sprintf("temp_mic_%s.wav", timestamp))
+		r.sysTempPath = filepath.Join(filepath.Dir(r.outputPath), fmt.Sprintf("temp_sys_%s.wav", timestamp))
+		
+		// Start WASAPI loopback for system audio
+		r.wasapiRecorder = NewWASAPILoopbackRecorder()
+		err := r.wasapiRecorder.StartRecording(r.sysTempPath)
+		if err != nil {
+			return fmt.Errorf("failed to start system audio recording: %w", err)
+		}
+		
+		// Start ffmpeg for microphone
+		args = []string{
+			"-f", "dshow",
+			"-rtbufsize", "100M",
+			"-i", fmt.Sprintf("audio=%s", micDeviceID),
+			"-acodec", "pcm_s16le",
+			"-ar", "44100",
+			"-ac", "1", // Mono
+			"-y",
+			r.micTempPath,
+		}
+		fmt.Printf("Recording system audio (WASAPI) + microphone (ffmpeg) simultaneously...\n")
+	}
+	
+	fmt.Printf("ffmpeg command: %s %v\n", ffmpegPath, args)
+	r.cmd = exec.Command(ffmpegPath, args...)
 
 	// Hide console window
 	r.cmd.SysProcAttr = &syscall.SysProcAttr{
 		HideWindow: true,
 	}
 
-	// Start recording in background
+	// Get stdin pipe to send 'q' command for graceful shutdown
+	stdin, err := r.cmd.StdinPipe()
+	if err != nil {
+		return fmt.Errorf("failed to get stdin pipe: %w", err)
+	}
+
+	// Capture stderr for debugging
+	stderr, err := r.cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("failed to get stderr pipe: %w", err)
+	}
+
+	// Start ffmpeg
+	if err := r.cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start ffmpeg: %w", err)
+	}
+
+	// Log ffmpeg output for debugging in background
 	go func() {
-		if err := r.cmd.Start(); err != nil {
-			fmt.Printf("Failed to start ffmpeg: %v\n", err)
-			return
-		}
-		
-		// Wait for stop signal or command completion
-		select {
-		case <-r.stopChan:
-			// Stop signal received, kill ffmpeg
-			if r.cmd.Process != nil {
-				r.cmd.Process.Kill()
+		buf := make([]byte, 1024)
+		for {
+			n, err := stderr.Read(buf)
+			if n > 0 {
+				fmt.Printf("ffmpeg: %s", string(buf[:n]))
+			}
+			if err != nil {
+				break
 			}
 		}
+	}()
+
+	// Wait for stop signal in background
+	go func() {
+		<-r.stopChan
+		// Send 'q' to ffmpeg for graceful shutdown
+		stdin.Write([]byte("q"))
+		stdin.Close()
 	}()
 
 	return nil
@@ -189,22 +277,112 @@ func (r *Recorder) StopRecording() (string, error) {
 		return "", fmt.Errorf("not recording")
 	}
 	r.isRecording = false
+	mode := r.mode
 	r.mu.Unlock()
 
-	// Signal the recording to stop
+	// If recording both (system + mic)
+	if mode == RecordBoth && r.wasapiRecorder != nil && r.cmd != nil {
+		// Stop WASAPI recorder
+		sysPath, err := r.wasapiRecorder.StopRecording()
+		if err != nil {
+			return "", fmt.Errorf("failed to stop system audio: %w", err)
+		}
+		
+		// Stop ffmpeg (microphone)
+		close(r.stopChan)
+		done := make(chan error, 1)
+		go func() {
+			done <- r.cmd.Wait()
+		}()
+		select {
+		case <-done:
+		case <-time.After(3 * time.Second):
+			r.cmd.Process.Kill()
+			<-done
+		}
+		
+		// Mix the two files using ffmpeg
+		fmt.Println("Mixing system audio and microphone...")
+		err = r.mixAudioFiles(sysPath, r.micTempPath, r.outputPath)
+		
+		// Clean up temp files
+		os.Remove(sysPath)
+		os.Remove(r.micTempPath)
+		
+		if err != nil {
+			return "", fmt.Errorf("failed to mix audio: %w", err)
+		}
+		
+		r.wasapiRecorder = nil
+		return r.outputPath, nil
+	}
+
+	// If using WASAPI loopback recorder only
+	if r.wasapiRecorder != nil {
+		outputPath, err := r.wasapiRecorder.StopRecording()
+		r.wasapiRecorder = nil
+		return outputPath, err
+	}
+
+	// Signal the recording to stop (this will send 'q' to ffmpeg)
 	close(r.stopChan)
 
-	// Wait for ffmpeg to finish
+	// Wait for ffmpeg to finish gracefully
 	if r.cmd != nil && r.cmd.Process != nil {
-		time.Sleep(500 * time.Millisecond)
-		r.cmd.Process.Kill()
-		r.cmd.Wait()
+		// Wait for process to exit (with timeout)
+		done := make(chan error, 1)
+		go func() {
+			done <- r.cmd.Wait()
+		}()
+		
+		select {
+		case err := <-done:
+			// Process exited gracefully
+			if err != nil {
+				fmt.Printf("ffmpeg exited with error: %v\n", err)
+			}
+		case <-time.After(3 * time.Second):
+			// Timeout, force kill
+			fmt.Println("ffmpeg timeout, forcing kill...")
+			r.cmd.Process.Kill()
+			<-done
+		}
 	} else {
 		// Wait for PowerShell recording to finish
 		time.Sleep(200 * time.Millisecond)
 	}
 
 	return r.outputPath, nil
+}
+
+// mixAudioFiles mixes two audio files using ffmpeg
+func (r *Recorder) mixAudioFiles(systemAudioPath, micPath, outputPath string) error {
+	// Find ffmpeg
+	cwd, _ := os.Getwd()
+	ffmpegPath := r.findFFmpeg(cwd)
+	if ffmpegPath == "" {
+		return fmt.Errorf("ffmpeg not found")
+	}
+
+	// Mix using amerge filter
+	cmd := exec.Command(ffmpegPath,
+		"-i", systemAudioPath,
+		"-i", micPath,
+		"-filter_complex", "[0:a][1:a]amerge=inputs=2[aout]",
+		"-map", "[aout]",
+		"-acodec", "pcm_s16le",
+		"-ar", "44100",
+		"-ac", "2",
+		"-y",
+		outputPath,
+	)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("ffmpeg mix failed: %w\nOutput: %s", err, string(output))
+	}
+
+	return nil
 }
 
 // writeWAVHeader writes a standard WAV file header
@@ -268,6 +446,17 @@ func (r *Recorder) findFFmpeg(exeDir string) string {
 	}
 	
 	return ""
+}
+
+// getDefaultAudioDevice tries to get the default audio input device name
+func (r *Recorder) getDefaultAudioDevice() (string, error) {
+	devices, err := ListAudioDevices()
+	if err != nil || len(devices) == 0 {
+		return "", fmt.Errorf("no audio devices found")
+	}
+	
+	// Return the first available device
+	return devices[0], nil
 }
 
 // Close cleans up the recorder

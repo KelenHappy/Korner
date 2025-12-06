@@ -82,3 +82,8 @@ korner.log
 # History
 build/bin/history/
 
+# Audio recordings
+record/
+*.wav
+test_output/
+
