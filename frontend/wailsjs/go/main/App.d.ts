@@ -47,6 +47,8 @@ export function QueryLLM(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function SaveSettings(arg1:main.AppSettings):Promise<void>;
 
+export function SelectAudioFile():Promise<string>;
+
 export function SetWindowPosition(arg1:number,arg2:number):Promise<void>;
 
 export function ShowWindow():Promise<void>;

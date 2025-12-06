@@ -82,18 +82,25 @@ func (r *Recorder) StartRecording() error {
 	r.isRecording = true
 	r.stopChan = make(chan struct{})
 	
-	// Get current working directory
-	cwd, err := os.Getwd()
+	// Get executable directory
+	exePath, err := os.Executable()
 	if err != nil {
 		r.mu.Unlock()
-		return fmt.Errorf("failed to get working directory: %w", err)
+		return fmt.Errorf("failed to get executable path: %w", err)
 	}
+	exeDir := filepath.Dir(exePath)
 
-	// Create output directory in current working directory
-	outputDir := filepath.Join(cwd, "record")
+	// Create output directory relative to executable (build/bin/record)
+	outputDir := filepath.Join(exeDir, "record")
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		r.mu.Unlock()
 		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+	
+	// Get current working directory for ffmpeg search
+	cwd, err := os.Getwd()
+	if err != nil {
+		cwd = exeDir
 	}
 
 	// Generate filename with timestamp

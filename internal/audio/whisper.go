@@ -8,85 +8,18 @@ import (
 	"strings"
 )
 
-// WhisperTranscriber handles audio transcription using whisper.cpp
-type WhisperTranscriber struct {
-	modelPath   string
-	whisperPath string
-}
-
-// NewWhisperTranscriber creates a new Whisper transcriber
-// modelPath: path to the ggml model file (e.g., "models/ggml-tiny.bin")
-// whisperPath: path to whisper.cpp executable (optional, will search in PATH if empty)
-func NewWhisperTranscriber(modelPath string, whisperPath string) (*WhisperTranscriber, error) {
-	// Find whisper executable
-	if whisperPath == "" {
-		// Try to find in common locations
-		candidates := []string{
-			"whisper",
-			"main",
-			"./whisper",
-			"./main",
-			"./whisper.cpp/main",
-			"./build/bin/main",
-		}
-		
-		var found bool
-		for _, candidate := range candidates {
-			if path, err := exec.LookPath(candidate); err == nil {
-				whisperPath = path
-				found = true
-				break
-			}
-		}
-		
-		if !found {
-			return nil, fmt.Errorf("whisper.cpp executable not found. Please provide whisperPath or add to PATH")
-		}
-	}
-	
-	// Verify whisper executable exists
-	if _, err := os.Stat(whisperPath); err != nil {
-		return nil, fmt.Errorf("whisper executable not found at %s: %w", whisperPath, err)
-	}
-	
-	// Verify model file exists
-	if _, err := os.Stat(modelPath); err != nil {
-		return nil, fmt.Errorf("model file not found at %s: %w", modelPath, err)
-	}
-	
-	return &WhisperTranscriber{
-		modelPath:   modelPath,
-		whisperPath: whisperPath,
-	}, nil
-}
+// WhisperTranscriber handles audio transcription using Python Whisper
+type WhisperTranscriber struct{}
 
 // TranscribeOptions contains options for transcription
 type TranscribeOptions struct {
-	Language    string  // Language code (e.g., "en", "zh", "auto" for auto-detect)
-	Threads     int     // Number of threads to use (0 = auto)
-	Translate   bool    // Translate to English
-	OutputTxt   bool    // Output .txt file
-	OutputSrt   bool    // Output .srt subtitle file
-	OutputVtt   bool    // Output .vtt subtitle file
-	OutputJson  bool    // Output .json file
-	MaxLen      int     // Maximum segment length in characters (0 = no limit)
-	SplitOnWord bool    // Split on word rather than token
-	Temperature float64 // Temperature for sampling (0.0 = greedy, higher = more random)
+	Language string // Language code (e.g., "en", "zh", "auto" for auto-detect)
 }
 
 // DefaultTranscribeOptions returns default transcription options
 func DefaultTranscribeOptions() TranscribeOptions {
 	return TranscribeOptions{
-		Language:    "auto",
-		Threads:     0,
-		Translate:   false,
-		OutputTxt:   true,
-		OutputSrt:   false,
-		OutputVtt:   false,
-		OutputJson:  false,
-		MaxLen:      0,
-		SplitOnWord: true,
-		Temperature: 0.0,
+		Language: "zh",
 	}
 }
 
@@ -96,127 +29,97 @@ func (w *WhisperTranscriber) Transcribe(audioPath string, options TranscribeOpti
 	if _, err := os.Stat(audioPath); err != nil {
 		return "", fmt.Errorf("audio file not found: %w", err)
 	}
-	
-	// Build command arguments
-	args := []string{
-		"-m", w.modelPath,
-		"-f", audioPath,
+
+	// Find Python - try multiple locations
+	pythonCmd := findPython()
+	if pythonCmd == "" {
+		return "", fmt.Errorf("Python not found. Please install Python and add to PATH")
 	}
-	
-	// Add language option
-	if options.Language != "" && options.Language != "auto" {
-		args = append(args, "-l", options.Language)
-	}
-	
-	// Add threads option
-	if options.Threads > 0 {
-		args = append(args, "-t", fmt.Sprintf("%d", options.Threads))
-	}
-	
-	// Add translate option
-	if options.Translate {
-		args = append(args, "-tr")
-	}
-	
-	// Add output format options
-	if options.OutputTxt {
-		args = append(args, "-otxt")
-	}
-	if options.OutputSrt {
-		args = append(args, "-osrt")
-	}
-	if options.OutputVtt {
-		args = append(args, "-ovtt")
-	}
-	if options.OutputJson {
-		args = append(args, "-oj")
-	}
-	
-	// Add max length option
-	if options.MaxLen > 0 {
-		args = append(args, "-ml", fmt.Sprintf("%d", options.MaxLen))
-	}
-	
-	// Add split on word option
-	if options.SplitOnWord {
-		args = append(args, "-sow")
-	}
-	
-	// Add temperature option
-	if options.Temperature > 0 {
-		args = append(args, "-t", fmt.Sprintf("%.2f", options.Temperature))
-	}
-	
-	// Run whisper.cpp
-	cmd := exec.Command(w.whisperPath, args...)
-	output, err := cmd.CombinedOutput()
+
+	// Get executable directory and create recordtext output directory
+	exePath, err := os.Executable()
 	if err != nil {
-		return "", fmt.Errorf("whisper.cpp failed: %w\nOutput: %s", err, string(output))
+		return "", fmt.Errorf("failed to get executable path: %w", err)
+	}
+	exeDir := filepath.Dir(exePath)
+	outputDir := filepath.Join(exeDir, "recordtext")
+	
+	// Create output directory if it doesn't exist
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create output directory: %w", err)
 	}
 	
-	// Parse output to extract transcription
-	text := w.parseWhisperOutput(string(output))
+	// 執行 python -m whisper 命令，輸出 txt 格式，指定輸出目錄
+	cmd := exec.Command(pythonCmd, "-m", "whisper", audioPath, 
+		"--model", "tiny", 
+		"--output_format", "txt",
+		"--output_dir", outputDir)
 	
-	return text, nil
-}
-
-// TranscribeToFile transcribes an audio file and saves to output files
-func (w *WhisperTranscriber) TranscribeToFile(audioPath string, options TranscribeOptions) error {
-	_, err := w.Transcribe(audioPath, options)
-	return err
-}
-
-// parseWhisperOutput extracts the transcription text from whisper.cpp output
-func (w *WhisperTranscriber) parseWhisperOutput(output string) string {
-	lines := strings.Split(output, "\n")
-	var transcription strings.Builder
+	// 設定環境變數以支援 UTF-8 輸出（解決中文編碼問題）
+	cmd.Env = append(os.Environ(),
+		"PYTHONIOENCODING=utf-8",
+		"PYTHONUTF8=1",
+	)
 	
-	// Look for lines that contain transcription (usually after timestamps)
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		
-		// Skip empty lines and info lines
-		if line == "" || strings.HasPrefix(line, "whisper_") || 
-		   strings.HasPrefix(line, "system_info") || strings.HasPrefix(line, "main:") {
-			continue
-		}
-		
-		// Look for timestamp pattern [00:00:00.000 --> 00:00:00.000]
-		if strings.Contains(line, "-->") {
-			// Extract text after timestamp
-			parts := strings.SplitN(line, "]", 2)
-			if len(parts) == 2 {
-				text := strings.TrimSpace(parts[1])
-				if text != "" {
-					transcription.WriteString(text)
-					transcription.WriteString(" ")
-				}
-			}
-		}
+	output, err := cmd.CombinedOutput()
+	
+	if err != nil {
+		return "", fmt.Errorf("Whisper 轉錄失敗: %w\n輸出: %s", err, string(output))
 	}
-	
-	return strings.TrimSpace(transcription.String())
-}
 
-// ReadTranscriptionFile reads the transcription from a .txt file generated by whisper.cpp
-func ReadTranscriptionFile(audioPath string) (string, error) {
-	// whisper.cpp generates .txt file with same name as audio file
-	txtPath := strings.TrimSuffix(audioPath, filepath.Ext(audioPath)) + ".txt"
+	// 讀取生成的 .txt 檔案
+	// Whisper 會生成 <filename>.txt (不含原副檔名)
+	baseFilename := filepath.Base(audioPath)
+	filenameWithoutExt := strings.TrimSuffix(baseFilename, filepath.Ext(baseFilename))
+	txtPath := filepath.Join(outputDir, filenameWithoutExt+".txt")
 	
 	data, err := os.ReadFile(txtPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to read transcription file: %w", err)
+		return "", fmt.Errorf("無法讀取轉錄結果 %s: %w", txtPath, err)
 	}
-	
+
 	return strings.TrimSpace(string(data)), nil
 }
 
-// QuickTranscribe is a convenience function for quick transcription with default options
-func QuickTranscribe(audioPath string, modelPath string) (string, error) {
-	transcriber, err := NewWhisperTranscriber(modelPath, "")
-	if err != nil {
-		return "", err
+// findPython tries to find Python executable
+func findPython() string {
+	// Try common Python commands
+	candidates := []string{"python", "python3", "py"}
+	
+	for _, cmd := range candidates {
+		if path, err := exec.LookPath(cmd); err == nil {
+			return path
+		}
 	}
 	
-	return transcriber.Transcribe(audioPath, DefaultTranscribeOptions())
+	// Try common installation paths on Windows
+	commonPaths := []string{
+		`C:\Python313\python.exe`,
+		`C:\Python312\python.exe`,
+		`C:\Python311\python.exe`,
+		`C:\Python310\python.exe`,
+		`C:\Users\` + os.Getenv("USERNAME") + `\AppData\Local\Programs\Python\Python313\python.exe`,
+		`C:\Users\` + os.Getenv("USERNAME") + `\AppData\Local\Programs\Python\Python312\python.exe`,
+		`C:\Users\` + os.Getenv("USERNAME") + `\AppData\Local\Programs\Python\Python311\python.exe`,
+	}
+	
+	for _, path := range commonPaths {
+		if _, err := os.Stat(path); err == nil {
+			return path
+		}
+	}
+	
+	return ""
+}
+
+
+
+// NewWhisperTranscriberAuto creates a Whisper transcriber
+func NewWhisperTranscriberAuto(modelName string) (*WhisperTranscriber, error) {
+	pythonCmd := findPython()
+	if pythonCmd == "" {
+		return nil, fmt.Errorf("Python not found. Please install Python and Whisper: pip install openai-whisper")
+	}
+	
+	return &WhisperTranscriber{}, nil
 }

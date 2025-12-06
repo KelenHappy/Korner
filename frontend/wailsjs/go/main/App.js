@@ -90,6 +90,10 @@ export function SaveSettings(arg1) {
   return window['go']['main']['App']['SaveSettings'](arg1);
 }
 
+export function SelectAudioFile() {
+  return window['go']['main']['App']['SelectAudioFile']();
+}
+
 export function SetWindowPosition(arg1, arg2) {
   return window['go']['main']['App']['SetWindowPosition'](arg1, arg2);
 }
