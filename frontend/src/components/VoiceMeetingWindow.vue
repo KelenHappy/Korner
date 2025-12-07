@@ -168,6 +168,7 @@ export default {
     flex-direction: column;
     align-items: center;
     gap: 12px;
+    pointer-events: auto;
 }
 
 .bubble-btn.back {

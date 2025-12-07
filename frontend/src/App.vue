@@ -622,13 +622,17 @@ export default {
             showPieMenu.value = false;
             await new Promise((resolve) => setTimeout(resolve, 250));
 
-            // 調整視窗大小為全螢幕大小，以便顯示進度視窗
-            try {
-                WindowSetSize(1920, 1080);
-                await new Promise((resolve) => setTimeout(resolve, 100));
-                WindowCenter();
-            } catch (error) {
-                console.log("Failed to resize/center window:", error);
+            // 保持在圖標位置，稍微擴大視窗以容納按鈕
+            if (iconScreenPos.value) {
+                try {
+                    const newX = iconScreenPos.value.x - 75;
+                    const newY = iconScreenPos.value.y - 100;
+                    WindowSetSize(150, 250);
+                    await new Promise((resolve) => setTimeout(resolve, 50));
+                    WindowSetPosition(newX, newY);
+                } catch (error) {
+                    console.log("Failed to position window:", error);
+                }
             }
 
             // 顯示語音會議窗口
