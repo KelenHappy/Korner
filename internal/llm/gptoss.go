@@ -114,7 +114,7 @@ func QueryGPTOSS(ctx context.Context, query string, screenshotBase64 string, api
 2. Use numbered lists (1. 2. 3.) for steps or items
 3. Use blank lines to separate sections
 4. Provide clear, direct answers
-5. When analyzing images, describe what you see concisely`
+5. You can search online`
 
 if language == "zh-TW" || language == "zh" || containsChinese(query) {
     systemPrompt = `你是 AI 助手。規則：
@@ -122,7 +122,7 @@ if language == "zh-TW" || language == "zh" || containsChinese(query) {
 2. 用數字列表（1. 2. 3.）
 3. 空行分段
 4. 直接回答
-5. 簡潔描述圖片
+5. 可以上網查詢
 6. 用繁體中文回答`
 }
 

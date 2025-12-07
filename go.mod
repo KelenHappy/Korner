@@ -1,11 +1,12 @@
 module github.com/Kelen/Korner
 
-go 1.24.0
+go 1.24.1
 
 require (
 	github.com/getlantern/systray v1.2.2
 	github.com/go-ole/go-ole v1.3.0
 	github.com/kbinani/screenshot v0.0.0-20250624051815-089614a94018
+	github.com/ledongthuc/pdf v0.0.0-20250511090121-5959a4027728
 	github.com/moutend/go-wca v0.3.0
 	github.com/wailsapp/wails/v2 v2.11.0
 )

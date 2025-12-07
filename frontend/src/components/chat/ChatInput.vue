@@ -10,17 +10,44 @@
             :disabled="disabled"
         ></textarea>
         <div class="input-actions">
-            <span class="char-count">{{ inputText.length }} / 1000 {{ charCountLabel }}</span>
-            <button
-                @click="handleSubmit"
-                :disabled="!inputText.trim() || disabled"
-                class="send-btn"
-            >
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M2 10L18 2L10 18L8 11L2 10Z" fill="currentColor" />
-                </svg>
-            </button>
+            <div class="left-actions">
+                <button
+                    @click="handleFileSelect"
+                    :disabled="disabled"
+                    class="file-btn"
+                    :class="{ 'has-file': selectedFiles.length > 0 }"
+                    :title="selectedFiles.length > 0 ? `已選擇 ${selectedFiles.length} 個檔案` : '上傳文件 (支援 TXT, MD, PDF, JSON, CSV)'"
+                >
+                    📄
+                    <span v-if="selectedFiles.length > 0" class="file-count">{{ selectedFiles.length }}</span>
+                </button>
+
+                <div v-if="selectedFiles.length > 0" class="file-list">
+                    <div 
+                        v-for="(file, index) in selectedFiles" 
+                        :key="index"
+                        class="file-tag"
+                        :title="file.name"
+                    >
+                        <span>{{ file.name }}</span>
+                        <button @click="removeFile(index)" class="remove-file">✕</button>
+                    </div>
+                </div>
+            </div>
+            <div class="right-actions">
+                <span class="char-count">{{ inputText.length }} / 1000 {{ charCountLabel }}</span>
+                <button
+                    @click="handleSubmit"
+                    :disabled="!inputText.trim() || disabled"
+                    class="send-btn"
+                >
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M2 10L18 2L10 18L8 11L2 10Z" fill="currentColor" />
+                    </svg>
+                </button>
+            </div>
         </div>
+
     </div>
 </template>
 
@@ -45,11 +72,16 @@ export default {
         charCountLabel: {
             type: String,
             default: 'characters'
+        },
+        screenshot: {
+            type: String,
+            default: ''
         }
     },
-    emits: ['update:modelValue', 'submit'],
+    emits: ['update:modelValue', 'submit', 'extract-text'],
     setup(props, { emit }) {
         const inputText = ref(props.modelValue);
+        const selectedFiles = ref([]);
 
         watch(() => props.modelValue, (newValue) => {
             inputText.value = newValue;
@@ -63,13 +95,60 @@ export default {
             const trimmed = inputText.value.trim();
             if (!trimmed || props.disabled) return;
             
-            emit('submit', trimmed.slice(0, 1000));
+            // 合併用戶輸入和所有檔案內容
+            let finalText = trimmed;
+            
+            if (selectedFiles.value.length > 0) {
+                finalText += '\n\n--- 檔案內容 ---\n';
+                selectedFiles.value.forEach((file, index) => {
+                    if (index > 0) finalText += '\n\n';
+                    finalText += `[檔案 ${index + 1}: ${file.name}]\n${file.content}`;
+                });
+            }
+            
+            emit('submit', finalText.slice(0, 10000));
             inputText.value = '';
+            selectedFiles.value = [];
+        };
+
+        const handleFileSelect = async () => {
+            if (props.disabled) return;
+            
+            try {
+                // 使用後端文件選擇對話框（支援所有文件類型包括 PDF）
+                const filePaths = await window.go.main.App.SelectDocumentFiles();
+                
+                if (filePaths.length === 0) return;
+                
+                for (const filePath of filePaths) {
+                    const fileName = filePath.split(/[/\\]/).pop();
+                    
+                    try {
+                        const content = await window.go.main.App.ReadDocumentFile(filePath);
+                        selectedFiles.value.push({
+                            name: fileName,
+                            content: content.slice(0, 3000)
+                        });
+                    } catch (error) {
+                        console.error(`讀取檔案 ${fileName} 失敗:`, error);
+                        alert(`無法讀取檔案 ${fileName}: ${error}`);
+                    }
+                }
+            } catch (error) {
+                console.error('選擇文件失敗:', error);
+            }
+        };
+
+        const removeFile = (index) => {
+            selectedFiles.value.splice(index, 1);
         };
 
         return {
             inputText,
-            handleSubmit
+            selectedFiles,
+            handleSubmit,
+            handleFileSelect,
+            removeFile
         };
     }
 };
@@ -117,6 +196,145 @@ export default {
     display: flex;
     align-items: center;
     justify-content: space-between;
+}
+
+.left-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.right-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.file-btn {
+    width: 36px;
+    height: 36px;
+    border: 1.5px solid rgba(0, 0, 0, 0.08);
+    background: white;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.file-btn:hover:not(:disabled) {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.05);
+}
+
+.file-btn.has-file {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.file-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.screenshot-btn {
+    width: 36px;
+    height: 36px;
+    border: 1.5px solid rgba(0, 0, 0, 0.08);
+    background: white;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all 0.2s;
+}
+
+.screenshot-btn:hover:not(:disabled) {
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.05);
+}
+
+.screenshot-btn.has-screenshot {
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.screenshot-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.file-count {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: #667eea;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid white;
+}
+
+.file-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.file-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    background: rgba(102, 126, 234, 0.1);
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    border-radius: 6px;
+    font-size: 11px;
+    color: #667eea;
+    font-weight: 500;
+    max-width: 150px;
+    min-width: 0;
+    flex-shrink: 1;
+}
+
+.file-tag span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.remove-file {
+    background: none;
+    border: none;
+    color: #667eea;
+    cursor: pointer;
+    padding: 0;
+    font-size: 12px;
+    line-height: 1;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.remove-file:hover {
+    opacity: 1;
 }
 
 .char-count {

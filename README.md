@@ -38,6 +38,7 @@ Korner is a lightweight Agentic AI desktop assistant that allows users to captur
 go install github.com/wailsapp/wails/v2/cmd/wails@latest
 wails build --clean
 python -m pip install -U openai-whisper
+ollama run qwen3-vl:4b
 ```
 
 ## Technical Overview

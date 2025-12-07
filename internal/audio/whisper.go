@@ -82,8 +82,28 @@ func (w *WhisperTranscriber) Transcribe(audioPath string, options TranscribeOpti
 }
 
 // findPython tries to find Python executable
+// Priority: 1. Virtual env in project, 2. System Python
 func findPython() string {
-	// Try common Python commands
+	// First, try to find virtual environment in project directory
+	exePath, err := os.Executable()
+	if err == nil {
+		exeDir := filepath.Dir(exePath)
+		
+		// Check for venv in project directory
+		venvPaths := []string{
+			filepath.Join(exeDir, "venv", "Scripts", "python.exe"),
+			filepath.Join(exeDir, ".venv", "Scripts", "python.exe"),
+			filepath.Join(exeDir, "python-env", "Scripts", "python.exe"),
+		}
+		
+		for _, venvPath := range venvPaths {
+			if _, err := os.Stat(venvPath); err == nil {
+				return venvPath
+			}
+		}
+	}
+	
+	// Try common Python commands in PATH
 	candidates := []string{"python", "python3", "py"}
 	
 	for _, cmd := range candidates {

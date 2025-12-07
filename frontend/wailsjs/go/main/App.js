@@ -18,6 +18,10 @@ export function ExportHistoryToText(arg1) {
   return window['go']['main']['App']['ExportHistoryToText'](arg1);
 }
 
+export function ExtractTextFromScreenshot(arg1) {
+  return window['go']['main']['App']['ExtractTextFromScreenshot'](arg1);
+}
+
 export function GenerateMeetingSummary(arg1) {
   return window['go']['main']['App']['GenerateMeetingSummary'](arg1);
 }
@@ -86,12 +90,24 @@ export function QueryLLM(arg1, arg2, arg3) {
   return window['go']['main']['App']['QueryLLM'](arg1, arg2, arg3);
 }
 
+export function ReadDocumentFile(arg1) {
+  return window['go']['main']['App']['ReadDocumentFile'](arg1);
+}
+
+export function ReadScreenshotAsBase64(arg1) {
+  return window['go']['main']['App']['ReadScreenshotAsBase64'](arg1);
+}
+
 export function SaveSettings(arg1) {
   return window['go']['main']['App']['SaveSettings'](arg1);
 }
 
 export function SelectAudioFile() {
   return window['go']['main']['App']['SelectAudioFile']();
+}
+
+export function SelectDocumentFiles() {
+  return window['go']['main']['App']['SelectDocumentFiles']();
 }
 
 export function SetWindowPosition(arg1, arg2) {

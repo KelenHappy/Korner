@@ -513,12 +513,16 @@ export default {
             }
 
             let screenshotB64 = currentQuery.value.screenshot || "";
+            console.log("[Korner] Screenshot data length:", screenshotB64.length);
+            
             if (screenshotB64 && screenshotB64.startsWith("data:image")) {
                 const comma = screenshotB64.indexOf(",");
                 if (comma !== -1) {
                     screenshotB64 = screenshotB64.substring(comma + 1);
                 }
             }
+            
+            console.log("[Korner] Screenshot base64 length after processing:", screenshotB64.length);
 
             try {
                 let response;

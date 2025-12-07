@@ -11,6 +11,8 @@ export function DeleteHistoryItem(arg1:string):Promise<void>;
 
 export function ExportHistoryToText(arg1:string):Promise<void>;
 
+export function ExtractTextFromScreenshot(arg1:string):Promise<string>;
+
 export function GenerateMeetingSummary(arg1:string):Promise<string>;
 
 export function GetAllHistory():Promise<Array<history.Conversation>>;
@@ -45,9 +47,15 @@ export function PositionWindowAt(arg1:number,arg2:number):Promise<void>;
 
 export function QueryLLM(arg1:string,arg2:string,arg3:string):Promise<string>;
 
+export function ReadDocumentFile(arg1:string):Promise<string>;
+
+export function ReadScreenshotAsBase64(arg1:string):Promise<string>;
+
 export function SaveSettings(arg1:main.AppSettings):Promise<void>;
 
 export function SelectAudioFile():Promise<string>;
+
+export function SelectDocumentFiles():Promise<Array<string>>;
 
 export function SetWindowPosition(arg1:number,arg2:number):Promise<void>;
 

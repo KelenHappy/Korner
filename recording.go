@@ -7,9 +7,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/Kelen/Korner/internal/audio"
+	"github.com/Kelen/Korner/internal/document"
 	"github.com/Kelen/Korner/internal/history"
 	"github.com/Kelen/Korner/internal/llm"
 	"github.com/Kelen/Korner/internal/meeting"
@@ -149,4 +151,49 @@ func (a *App) GenerateMeetingSummary(audioPath string) (string, error) {
 	}
 
 	return summary, nil
+}
+
+// SelectDocumentFiles opens a file dialog to select document files
+func (a *App) SelectDocumentFiles() ([]string, error) {
+	filePaths, err := wailsruntime.OpenMultipleFilesDialog(a.ctx, wailsruntime.OpenDialogOptions{
+		Title: "選擇文件",
+		Filters: []wailsruntime.FileFilter{
+			{
+				DisplayName: "文件檔案 (*.txt, *.md, *.pdf, *.json, *.csv)",
+				Pattern:     "*.txt;*.md;*.pdf;*.json;*.csv;*.log",
+			},
+			{
+				DisplayName: "所有檔案 (*.*)",
+				Pattern:     "*.*",
+			},
+		},
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file dialog: %w", err)
+	}
+
+	if len(filePaths) == 0 {
+		log.Println("[Document] No files selected")
+		return []string{}, nil
+	}
+
+	log.Printf("[Document] Selected %d files", len(filePaths))
+	return filePaths, nil
+}
+
+// ReadDocumentFile reads a document file and returns its text content
+func (a *App) ReadDocumentFile(filePath string) (string, error) {
+	ext := strings.ToLower(filepath.Ext(filePath))
+	
+	log.Printf("[Document] Reading file: %s (type: %s)", filePath, ext)
+
+	switch ext {
+	case ".pdf":
+		return document.ExtractPDFText(filePath)
+	case ".txt", ".md", ".json", ".csv", ".log":
+		return document.ReadTextFile(filePath)
+	default:
+		return "", fmt.Errorf("unsupported file type: %s", ext)
+	}
 }
