@@ -21,6 +21,15 @@
                     📄
                     <span v-if="selectedFiles.length > 0" class="file-count">{{ selectedFiles.length }}</span>
                 </button>
+                <button
+                    @click="webSearchEnabled = !webSearchEnabled"
+                    :disabled="disabled"
+                    class="web-search-btn"
+                    :class="{ 'active': webSearchEnabled }"
+                    :title="webSearchEnabled ? '關閉旅遊搜尋' : '開啟旅遊搜尋'"
+                >
+                    🚆
+                </button>
 
                 <div v-if="selectedFiles.length > 0" class="file-list">
                     <div 
@@ -82,6 +91,7 @@ export default {
     setup(props, { emit }) {
         const inputText = ref(props.modelValue);
         const selectedFiles = ref([]);
+        const webSearchEnabled = ref(false);
 
         watch(() => props.modelValue, (newValue) => {
             inputText.value = newValue;
@@ -106,7 +116,13 @@ export default {
                 });
             }
             
-            emit('submit', finalText.slice(0, 10000));
+            // 如果開啟聯網搜尋，添加標記
+            const submitData = {
+                text: finalText.slice(0, 10000),
+                webSearch: webSearchEnabled.value
+            };
+            
+            emit('submit', submitData);
             inputText.value = '';
             selectedFiles.value = [];
         };
@@ -146,6 +162,7 @@ export default {
         return {
             inputText,
             selectedFiles,
+            webSearchEnabled,
             handleSubmit,
             handleFileSelect,
             removeFile
@@ -239,6 +256,36 @@ export default {
 }
 
 .file-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.web-search-btn {
+    width: 36px;
+    height: 36px;
+    border: 1.5px solid rgba(0, 0, 0, 0.08);
+    background: white;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all 0.2s;
+}
+
+.web-search-btn:hover:not(:disabled) {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.web-search-btn.active {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.15);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.web-search-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }

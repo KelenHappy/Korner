@@ -66,7 +66,7 @@ func ExtractTextFromImage(ctx context.Context, imageBase64 string, endpoint stri
 2. 保持原有的格式和結構
 3. 如果有表格，請保持表格結構
 4. 只輸出提取的文字，不要添加任何解釋或說明
-5. 如果圖片中沒有文字，請回答「圖片文字描述」`
+5. 如果圖片中沒有文字，請描述圖片內容`
 	
 	reqPayload := OllamaRequest{
 		Model:  "qwen3-vl:4b",
@@ -160,4 +160,98 @@ func ExtractTextFromImage(ctx context.Context, imageBase64 string, endpoint stri
 	}
 	
 	return extractedText, nil
+}
+
+
+// QueryOllamaWithWebSearch queries Ollama directly using generate API
+func QueryOllamaWithWebSearch(ctx context.Context, query string, endpoint string, language string) (string, error) {
+	if endpoint == "" {
+		endpoint = "http://127.0.0.1:11434"
+	}
+
+	apiURL := strings.TrimSuffix(endpoint, "/") + "/api/generate"
+	log.Printf("[Ollama] Endpoint: %s", endpoint)
+	log.Printf("[Ollama] Query: %s", query)
+
+	// Build prompt based on language
+	prompt := query
+	if language == "zh-TW" || language == "zh" {
+		prompt = `規則：
+1. 純文字，不用 Markdown
+2. 用數字列表（1. 2. 3.）
+3. 空行分段
+4. 請用繁體中文直接回答以下問題：
+
+` + query
+	} else {
+		prompt = `Rules:
+1. Pure text, no Markdown
+2. Use numbered lists (1. 2. 3.)
+3. Empty line breaks
+4. Please answer the following question directly:
+
+` + query
+	}
+
+	reqPayload := OllamaRequest{
+		Model:  "qwen3-vl:4b",
+		Prompt: prompt,
+		Stream: false,
+	}
+
+	body, err := json.Marshal(reqPayload)
+	if err != nil {
+		return "", fmt.Errorf("marshal request: %w", err)
+	}
+
+	log.Printf("[Ollama] Sending request to: %s", apiURL)
+
+	// Create HTTP client that bypasses proxy for localhost
+	transport := &http.Transport{
+		MaxIdleConns:        10,
+		MaxIdleConnsPerHost: 10,
+		MaxConnsPerHost:     10,
+		Proxy: func(req *http.Request) (*url.URL, error) {
+			host := req.URL.Host
+			if host == "127.0.0.1:11434" || host == "127.0.0.1" ||
+				host == "localhost:11434" || host == "localhost" {
+				return nil, nil
+			}
+			return http.ProxyFromEnvironment(req)
+		},
+	}
+
+	httpClient := &http.Client{
+		Timeout:   180 * time.Second,
+		Transport: transport,
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("http request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		log.Printf("[Ollama] ERROR response: %s", string(bodyBytes))
+		return "", fmt.Errorf("API error (%d): %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var result OllamaResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("decode response: %w", err)
+	}
+
+	responseText := strings.TrimSpace(result.Response)
+	log.Printf("[Ollama] Response length: %d", len(responseText))
+
+	return responseText, nil
 }

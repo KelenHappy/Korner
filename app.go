@@ -402,6 +402,61 @@ func (a *App) QueryLLM(query string, screenshotBase64 string, language string) (
 	return result, nil
 }
 
+// QueryLLMWithWebSearch sends a query with web search enabled using Ollama
+func (a *App) QueryLLMWithWebSearch(query string, screenshotBase64 string, language string) (string, error) {
+	ctx := a.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	log.Printf("[QueryLLMWithWebSearch] Starting query with web search enabled")
+	log.Printf("[QueryLLMWithWebSearch] Query: %s", query)
+
+	// Get Ollama endpoint
+	endpoint := a.settings.OllamaEndpoint
+	if endpoint == "" {
+		endpoint = "http://127.0.0.1:11434"
+	}
+
+	// If screenshot is provided, extract text first
+	if screenshotBase64 != "" {
+		log.Printf("[QueryLLMWithWebSearch] Screenshot provided, extracting text...")
+		text, err := a.ExtractTextFromScreenshot(screenshotBase64)
+		if err != nil {
+			log.Printf("[QueryLLMWithWebSearch] Warning: OCR failed: %v", err)
+		} else if text != "" {
+			query = query + "\n\n[圖片中的文字內容]\n" + text
+		}
+	}
+
+	// Use Ollama with web search
+	result, err := ocr.QueryOllamaWithWebSearch(ctx, query, endpoint, language)
+	if err != nil {
+		log.Printf("[QueryLLMWithWebSearch] ERROR: %v", err)
+		return "", err
+	}
+
+	log.Printf("[QueryLLMWithWebSearch] Success! Response length: %d", len(result))
+
+	// Save to history
+	if a.history != nil {
+		screenshotPath, _ := getLastScreenshotPath()
+		conv := history.Conversation{
+			Timestamp:      time.Now(),
+			Question:       query + " [聯網搜尋]",
+			Answer:         result,
+			ScreenshotPath: screenshotPath,
+			Provider:       "ollama",
+			Model:          "qwen3-vl:4b",
+		}
+		if err := a.history.Save(conv); err != nil {
+			log.Printf("Warning: failed to save conversation to history: %v", err)
+		}
+	}
+
+	return result, nil
+}
+
 // OpenDevTools opens the developer tools window
 func (a *App) OpenDevTools() {
 	wailsruntime.WindowShow(a.ctx)

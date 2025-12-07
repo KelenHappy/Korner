@@ -102,19 +102,23 @@ export default {
             }
         };
 
-        const submit = async (text) => {
+        const submit = async (submitData) => {
+            // 支持舊格式（純文字）和新格式（對象）
+            const text = typeof submitData === 'string' ? submitData : submitData.text;
+            const webSearch = typeof submitData === 'object' ? submitData.webSearch : false;
+            
             if (!text || isLoading.value) return;
 
             messages.value.push({
                 role: 'user',
-                content: text,
+                content: text + (webSearch ? ' 🌐' : ''),
                 timestamp: new Date()
             });
 
             isLoading.value = true;
             scrollToBottom();
 
-            emit('submit', text, (response) => {
+            emit('submit', { text, webSearch }, (response) => {
                 messages.value.push({
                     role: 'assistant',
                     content: response,

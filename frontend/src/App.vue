@@ -506,14 +506,19 @@ export default {
             await checkAndShrinkWindow();
         };
 
-        const handleQuerySubmit = async (queryText, callback) => {
+        const handleQuerySubmit = async (queryData, callback) => {
             if (!currentQuery.value) {
                 console.error("[Korner] No current query");
                 return;
             }
 
+            // 支持舊格式（純文字）和新格式（對象）
+            const queryText = typeof queryData === 'string' ? queryData : queryData.text;
+            const webSearch = typeof queryData === 'object' ? queryData.webSearch : false;
+
             let screenshotB64 = currentQuery.value.screenshot || "";
             console.log("[Korner] Screenshot data length:", screenshotB64.length);
+            console.log("[Korner] Web search enabled:", webSearch);
             
             if (screenshotB64 && screenshotB64.startsWith("data:image")) {
                 const comma = screenshotB64.indexOf(",");
@@ -539,11 +544,20 @@ export default {
                         console.log("[Korner] Could not read language from localStorage");
                     }
                     
-                    response = await window.go.main.App.QueryLLM(
-                        queryText,
-                        screenshotB64,
-                        currentLanguage,
-                    );
+                    // 如果開啟聯網搜尋，使用 QueryLLMWithWebSearch
+                    if (webSearch) {
+                        response = await window.go.main.App.QueryLLMWithWebSearch(
+                            queryText,
+                            screenshotB64,
+                            currentLanguage,
+                        );
+                    } else {
+                        response = await window.go.main.App.QueryLLM(
+                            queryText,
+                            screenshotB64,
+                            currentLanguage,
+                        );
+                    }
                     console.log("[Korner] Received response from backend");
                 } else {
                     // Dev mode - simulate response

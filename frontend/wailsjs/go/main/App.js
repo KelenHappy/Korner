@@ -90,6 +90,10 @@ export function QueryLLM(arg1, arg2, arg3) {
   return window['go']['main']['App']['QueryLLM'](arg1, arg2, arg3);
 }
 
+export function QueryLLMWithWebSearch(arg1, arg2, arg3) {
+  return window['go']['main']['App']['QueryLLMWithWebSearch'](arg1, arg2, arg3);
+}
+
 export function ReadDocumentFile(arg1) {
   return window['go']['main']['App']['ReadDocumentFile'](arg1);
 }

@@ -122,8 +122,7 @@ if language == "zh-TW" || language == "zh" || containsChinese(query) {
 2. 用數字列表（1. 2. 3.）
 3. 空行分段
 4. 直接回答
-5. 可以上網查詢
-6. 用繁體中文回答`
+5. 用繁體中文回答`
 }
 
 	messages := []OpenAIMessage{

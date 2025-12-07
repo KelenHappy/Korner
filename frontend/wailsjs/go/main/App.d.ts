@@ -47,6 +47,8 @@ export function PositionWindowAt(arg1:number,arg2:number):Promise<void>;
 
 export function QueryLLM(arg1:string,arg2:string,arg3:string):Promise<string>;
 
+export function QueryLLMWithWebSearch(arg1:string,arg2:string,arg3:string):Promise<string>;
+
 export function ReadDocumentFile(arg1:string):Promise<string>;
 
 export function ReadScreenshotAsBase64(arg1:string):Promise<string>;
