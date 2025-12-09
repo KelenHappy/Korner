@@ -94,8 +94,8 @@ func (a *App) SelectAudioFile() (string, error) {
 	}
 
 	if filePath == "" {
-		log.Println("[Audio] No file selected")
-		return "", nil
+		log.Println("[Audio] User cancelled file selection")
+		return "", nil // Not an error, user just cancelled
 	}
 
 	log.Printf("[Audio] Selected file: %s", filePath)

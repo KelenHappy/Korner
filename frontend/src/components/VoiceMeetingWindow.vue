@@ -107,7 +107,10 @@ export default {
             try {
                 errorMsg.value = '';
                 const filePath = await window.go.main.App.SelectAudioFile();
-                if (filePath) recording.savedFile.value = filePath;
+                if (filePath) {
+                    recording.savedFile.value = filePath;
+                }
+                // If filePath is empty, user cancelled - no error needed
             } catch (error) {
                 errorMsg.value = String(error);
             }
