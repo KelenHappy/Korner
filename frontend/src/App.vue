@@ -383,9 +383,9 @@ export default {
             showPieMenu.value = false;
             await new Promise((resolve) => setTimeout(resolve, 250));
 
-            // 調整視窗大小並置中
+            // 調整視窗大小並置中 - 增加寬度以確保內容正常顯示
             try {
-                WindowSetSize(720, 600);
+                WindowSetSize(800, 650);
                 await new Promise((resolve) => setTimeout(resolve, 100));
                 WindowCenter();
             } catch (error) {

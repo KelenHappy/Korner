@@ -79,8 +79,8 @@ func (a *App) SelectAudioFile() (string, error) {
 		Title: "選擇音訊檔案",
 		Filters: []wailsruntime.FileFilter{
 			{
-				DisplayName: "音訊檔案 (*.wav, *.mp3, *.m4a, *.flac)",
-				Pattern:     "*.wav;*.mp3;*.m4a;*.flac;*.ogg;*.opus",
+				DisplayName: "音訊檔案 (*.wav, *.mp3, *.m4a, *.flac, *.ogg, *.opus, *.aac)",
+				Pattern:     "*.wav;*.mp3;*.m4a;*.flac;*.ogg;*.opus;*.aac;*.wma",
 			},
 			{
 				DisplayName: "所有檔案 (*.*)",

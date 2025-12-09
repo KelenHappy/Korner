@@ -2,6 +2,7 @@ package audio
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,32 +25,58 @@ func DefaultTranscribeOptions() TranscribeOptions {
 }
 
 // Transcribe transcribes an audio file and returns the text
+// Supports: wav, mp3, m4a, flac, ogg, opus, and other formats supported by ffmpeg
 func (w *WhisperTranscriber) Transcribe(audioPath string, options TranscribeOptions) (string, error) {
+	log.Printf("[Whisper] Starting transcription for: %s", audioPath)
+	
 	// Verify audio file exists
 	if _, err := os.Stat(audioPath); err != nil {
-		return "", fmt.Errorf("audio file not found: %w", err)
+		log.Printf("[Whisper] Error: Audio file not found: %s, error: %v", audioPath, err)
+		return "", fmt.Errorf("音訊檔案不存在")
+	}
+
+	// Verify file format is supported
+	ext := strings.ToLower(filepath.Ext(audioPath))
+	supportedFormats := []string{".wav", ".mp3", ".m4a", ".flac", ".ogg", ".opus", ".aac", ".wma"}
+	isSupported := false
+	for _, format := range supportedFormats {
+		if ext == format {
+			isSupported = true
+			break
+		}
+	}
+	if !isSupported {
+		log.Printf("[Whisper] Error: Unsupported format: %s, supported: %v", ext, supportedFormats)
+		return "", fmt.Errorf("不支援的格式")
 	}
 
 	// Find Python - try multiple locations
 	pythonCmd := findPython()
 	if pythonCmd == "" {
-		return "", fmt.Errorf("Python not found. Please install Python and add to PATH")
+		log.Printf("[Whisper] Error: Python not found in PATH or common locations")
+		return "", fmt.Errorf("找不到 Python")
 	}
+	log.Printf("[Whisper] Using Python: %s", pythonCmd)
 
 	// Get executable directory and create recordtext output directory
 	exePath, err := os.Executable()
 	if err != nil {
-		return "", fmt.Errorf("failed to get executable path: %w", err)
+		log.Printf("[Whisper] Error: Failed to get executable path: %v", err)
+		return "", fmt.Errorf("系統錯誤")
 	}
 	exeDir := filepath.Dir(exePath)
 	outputDir := filepath.Join(exeDir, "recordtext")
 	
 	// Create output directory if it doesn't exist
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create output directory: %w", err)
+		log.Printf("[Whisper] Error: Failed to create output directory %s: %v", outputDir, err)
+		return "", fmt.Errorf("無法建立輸出目錄")
 	}
 	
+	log.Printf("[Whisper] Output directory: %s", outputDir)
+	
 	// 執行 python -m whisper 命令，輸出 txt 格式，指定輸出目錄
+	// 對於 mp3 等壓縮格式，Whisper 會自動使用 ffmpeg 解碼
 	cmd := exec.Command(pythonCmd, "-m", "whisper", audioPath, 
 		"--model", "tiny", 
 		"--output_format", "txt",
@@ -61,11 +88,23 @@ func (w *WhisperTranscriber) Transcribe(audioPath string, options TranscribeOpti
 		"PYTHONUTF8=1",
 	)
 	
+	log.Printf("[Whisper] Executing Whisper command...")
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		return "", fmt.Errorf("Whisper 轉錄失敗: %w\n輸出: %s", err, string(output))
+		errorMsg := string(output)
+		log.Printf("[Whisper] Error: Command failed: %v", err)
+		log.Printf("[Whisper] Full output: %s", errorMsg)
+		
+		// 檢查是否是 ffmpeg 相關錯誤
+		if strings.Contains(errorMsg, "ffmpeg") || strings.Contains(errorMsg, "RuntimeError") {
+			log.Printf("[Whisper] Detected ffmpeg-related error")
+			return "", fmt.Errorf("轉錄失敗")
+		}
+		return "", fmt.Errorf("轉錄失敗")
 	}
+
+	log.Printf("[Whisper] Command completed successfully")
 
 	// 讀取生成的 .txt 檔案
 	// Whisper 會生成 <filename>.txt (不含原副檔名)
@@ -73,12 +112,21 @@ func (w *WhisperTranscriber) Transcribe(audioPath string, options TranscribeOpti
 	filenameWithoutExt := strings.TrimSuffix(baseFilename, filepath.Ext(baseFilename))
 	txtPath := filepath.Join(outputDir, filenameWithoutExt+".txt")
 	
+	log.Printf("[Whisper] Reading transcription from: %s", txtPath)
 	data, err := os.ReadFile(txtPath)
 	if err != nil {
-		return "", fmt.Errorf("無法讀取轉錄結果 %s: %w", txtPath, err)
+		log.Printf("[Whisper] Error: Failed to read transcription file %s: %v", txtPath, err)
+		return "", fmt.Errorf("無法讀取轉錄結果")
 	}
 
-	return strings.TrimSpace(string(data)), nil
+	transcription := strings.TrimSpace(string(data))
+	if transcription == "" {
+		log.Printf("[Whisper] Warning: Transcription is empty for file: %s", audioPath)
+		return "", fmt.Errorf("轉錄結果為空")
+	}
+
+	log.Printf("[Whisper] Transcription completed successfully, length: %d chars", len(transcription))
+	return transcription, nil
 }
 
 // findPython tries to find Python executable
@@ -138,8 +186,11 @@ func findPython() string {
 func NewWhisperTranscriberAuto(modelName string) (*WhisperTranscriber, error) {
 	pythonCmd := findPython()
 	if pythonCmd == "" {
-		return nil, fmt.Errorf("Python not found. Please install Python and Whisper: pip install openai-whisper")
+		log.Printf("[Whisper] Error: Python not found during initialization")
+		log.Printf("[Whisper] Searched in PATH and common installation directories")
+		return nil, fmt.Errorf("找不到 Python")
 	}
 	
+	log.Printf("[Whisper] Transcriber initialized with Python: %s", pythonCmd)
 	return &WhisperTranscriber{}, nil
 }

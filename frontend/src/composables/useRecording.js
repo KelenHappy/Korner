@@ -18,6 +18,12 @@ export function useRecording() {
     };
 
     const stopRecording = async () => {
+        // 防止重複停止
+        if (!isRecording.value) {
+            console.log('[Recording] Already stopped, ignoring');
+            return;
+        }
+        
         if (durationInterval) {
             clearInterval(durationInterval);
             durationInterval = null;
@@ -39,9 +45,12 @@ export function useRecording() {
     const cleanup = () => {
         if (durationInterval) {
             clearInterval(durationInterval);
+            durationInterval = null;
         }
         if (isRecording.value) {
-            stopRecording();
+            stopRecording().catch(err => {
+                console.error('[Recording] Cleanup error:', err);
+            });
         }
     };
 

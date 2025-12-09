@@ -6,6 +6,7 @@ package audio
 import (
 	"encoding/binary"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -281,7 +282,8 @@ func (r *Recorder) StopRecording() (string, error) {
 	r.mu.Lock()
 	if !r.isRecording {
 		r.mu.Unlock()
-		return "", fmt.Errorf("not recording")
+		log.Printf("[Recorder] Error: StopRecording called but not currently recording")
+		return "", fmt.Errorf("未在錄音中")
 	}
 	r.isRecording = false
 	mode := r.mode

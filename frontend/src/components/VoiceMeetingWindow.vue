@@ -66,6 +66,7 @@ import ActionButtons from './VoiceMeeting/ActionButtons.vue';
 import ErrorToast from './VoiceMeeting/ErrorToast.vue';
 import MeetingSummaryProgress from './MeetingSummaryProgress.vue';
 import MeetingSummaryResult from './MeetingSummaryResult.vue';
+import { WindowSetSize, WindowCenter } from '../../wailsjs/runtime/runtime';
 
 export default {
     name: 'VoiceMeetingWindow',
@@ -128,6 +129,16 @@ export default {
         const handleGenerateSummary = async () => {
             try {
                 errorMsg.value = '';
+                
+                // 放大視窗並置中，顯示處理進度和結果
+                try {
+                    WindowSetSize(700, 600);
+                    await new Promise((resolve) => setTimeout(resolve, 50));
+                    WindowCenter();
+                } catch (e) {
+                    console.log("Failed to resize window:", e);
+                }
+                
                 await summary.generateSummary(recording.savedFile.value);
             } catch (error) {
                 errorMsg.value = String(error);
