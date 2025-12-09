@@ -28,8 +28,12 @@ export function useRecording() {
         savedFile.value = filePath;
     };
 
-    const toggleRecording = () => {
-        isRecording.value ? stopRecording() : startRecording();
+    const toggleRecording = async () => {
+        if (isRecording.value) {
+            await stopRecording();
+        } else {
+            await startRecording();
+        }
     };
 
     const cleanup = () => {
