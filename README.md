@@ -46,6 +46,7 @@ wails build --clean
 ```sh
 python -m pip install -U openai-whisper
 ollama run qwen3-vl:4b
+winget install --id Gyan.FFmpeg --source winget
 ```
 
 ## Technical Overview
