@@ -34,6 +34,7 @@ Korner is a lightweight Agentic AI desktop assistant that allows users to captur
 [Install Go](https://go.dev/dl/)    
 [Install Python](https://www.python.org/)   
 [Install Ollama](https://ollama.com/download)  
+[Install FFmpeg](https://ffmpeg.org/)  
 
 ```sh
 go install github.com/wailsapp/wails/v2/cmd/wails@latest
