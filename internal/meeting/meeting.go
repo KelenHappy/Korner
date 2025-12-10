@@ -96,26 +96,18 @@ func GenerateSummaryPrompt(language string, transcription string) string {
 會議基本資訊
 -----------
 會議主題：[從對話中推斷出的會議主題]
-會議時間：%s
-參與人員：[從對話中識別出的參與者，如果無法識別則寫「未明確提及」]
 
 主要討論內容
 -----------
 1. [討論主題]
    討論內容：[簡要說明討論的內容]
    關鍵觀點：[列出重要的觀點或意見]
-
-2. [討論主題]
-   討論內容：[簡要說明討論的內容]
-   關鍵觀點：[列出重要的觀點或意見]
+2...
 
 重要決議與共識
 -------------
 - [決議 1 - 具體說明決定了什麼]
-- [決議 2 - 具體說明決定了什麼]
-
-如果沒有明確決議，請寫「本次會議未達成明確決議」
-
+- [決議 2 ...
 行動項目與追蹤事項
 -----------------
 序號 | 行動項目 | 負責人 | 預計完成時間 | 優先級 | 狀態
@@ -123,35 +115,20 @@ func GenerateSummaryPrompt(language string, transcription string) string {
 1    | [項目]   | [人員] | [期限]       | [高/中/低] | 待處理
 
 如果沒有明確的行動項目，請寫「本次會議未產生明確的行動項目」
-
 待解決問題與風險
 ---------------
 - [問題或風險 1]
-- [問題或風險 2]
-
-如果沒有，請寫「無待解決問題」
+...
 
 關鍵結論與下一步
 ---------------
-會議核心結論：[用 1-2 句話總結會議最重要的結論]
+會議核心結論：[總結會議最重要的結論]
 下一步行動：[說明接下來需要做什麼]
 下次會議建議：[如果有提到，說明下次會議的時間或議題]
 
-會議效率評估
------------
-討論焦點：[評估會議是否聚焦，還是有離題情況]
-決策效率：[評估是否有效達成決策]
-改進建議：[給出 1-2 個改進會議效率的建議]
-
----
-轉錄內容：
-%s
-
 注意事項：
 1. 請用繁體中文回覆
-2. 如果轉錄內容中某些資訊不明確，請標註「未明確提及」或「待確認」
-3. 請保持客觀中立，忠實呈現會議內容
-4. 如果是非正式對話或閒聊，請在開頭說明「本次錄音為非正式對話」`, currentTime, transcription)
+`, currentTime, transcription)
 	}
 
 	// English prompt
@@ -173,15 +150,12 @@ Main Discussion Points
 1. [Discussion Topic]
    Content: [Brief description of the discussion]
    Key Points: [List important viewpoints or opinions]
-
-2. [Discussion Topic]
-   Content: [Brief description of the discussion]
-   Key Points: [List important viewpoints or opinions]
+...
 
 Important Decisions & Consensus
 -------------------------------
 - [Decision 1 - Specify what was decided]
-- [Decision 2 - Specify what was decided]
+...
 
 If no clear decisions were made, write "No clear decisions were reached in this meeting"
 
@@ -196,29 +170,15 @@ If no clear action items, write "No clear action items were generated in this me
 Pending Issues & Risks
 ---------------------
 - [Issue or Risk 1]
-- [Issue or Risk 2]
-
-If none, write "No pending issues"
+...
 
 Key Conclusions & Next Steps
 ----------------------------
-Core Conclusion: [Summarize the most important conclusion in 1-2 sentences]
+Core Conclusion: [Summarize the most important conclusion]
 Next Actions: [Describe what needs to be done next]
 Next Meeting Suggestion: [If mentioned, specify the time or agenda for the next meeting]
 
-Meeting Efficiency Assessment
------------------------------
-Discussion Focus: [Assess whether the meeting stayed focused or went off-topic]
-Decision Efficiency: [Assess whether decisions were made effectively]
-Improvement Suggestions: [Provide 1-2 suggestions for improving meeting efficiency]
-
----
-Transcription:
-%s
-
 Notes:
 1. Please respond in English
-2. If certain information is unclear in the transcription, mark it as "Not explicitly mentioned" or "To be confirmed"
-3. Remain objective and neutral, faithfully presenting the meeting content
-4. If this is an informal conversation or chat, note at the beginning "This recording is an informal conversation"`, currentTime, transcription)
+"`, currentTime, transcription)
 }

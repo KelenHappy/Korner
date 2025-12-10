@@ -13,8 +13,8 @@ import (
 	"github.com/Kelen/Korner/internal/audio"
 	"github.com/Kelen/Korner/internal/document"
 	"github.com/Kelen/Korner/internal/history"
-	"github.com/Kelen/Korner/internal/llm"
 	"github.com/Kelen/Korner/internal/meeting"
+	"github.com/Kelen/Korner/internal/ocr"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -125,10 +125,15 @@ func (a *App) GenerateMeetingSummary(audioPath string) (string, error) {
 		return "", err
 	}
 
-	// 2. 使用 LLM 生成會議摘要
+	// 2. 使用 Ollama 生成會議摘要
 	summaryPrompt := meeting.GenerateSummaryPrompt(language, result.Transcription)
 
-	summary, err := llm.QueryGPTOSS(ctx, summaryPrompt, "", a.settings.APIKey, a.settings.APIEndpoint, language)
+	ollamaEndpoint := a.settings.OllamaEndpoint
+	if ollamaEndpoint == "" {
+		ollamaEndpoint = "http://127.0.0.1:11434"
+	}
+
+	summary, err := ocr.QueryOllamaWithWebSearch(ctx, summaryPrompt, ollamaEndpoint, language)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate summary: %w", err)
 	}
@@ -143,7 +148,7 @@ func (a *App) GenerateMeetingSummary(audioPath string) (string, error) {
 			Answer:         summary,
 			ScreenshotPath: audioPath,
 			Provider:       a.settings.APIProvider,
-			Model:          "whisper-tiny + " + a.settings.APIProvider,
+			Model:          "whisper-tiny + ollama",
 		}
 		if err := a.history.Save(conv); err != nil {
 			log.Printf("Warning: failed to save meeting summary to history: %v", err)
