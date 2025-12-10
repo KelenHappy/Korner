@@ -11,37 +11,40 @@
         ></textarea>
         <div class="input-actions">
             <div class="left-actions">
-                <button
-                    @click="handleFileSelect"
-                    :disabled="disabled"
-                    class="file-btn"
-                    :class="{ 'has-file': selectedFiles.length > 0 }"
-                    :title="selectedFiles.length > 0 ? `已選擇 ${selectedFiles.length} 個檔案` : '上傳文件 (支援 TXT, MD, PDF, JSON, CSV)'"
-                >
-                    📄
-                    <span v-if="selectedFiles.length > 0" class="file-count">{{ selectedFiles.length }}</span>
-                </button>
-                <button
-                    @click="webSearchEnabled = !webSearchEnabled"
-                    :disabled="disabled"
-                    class="web-search-btn"
-                    :class="{ 'active': webSearchEnabled }"
-                    :title="webSearchEnabled ? '關閉旅遊搜尋' : '開啟旅遊搜尋'"
-                >
-                    🚆
-                </button>
-
-                <div v-if="selectedFiles.length > 0" class="file-list">
-                    <div 
-                        v-for="(file, index) in selectedFiles" 
-                        :key="index"
-                        class="file-tag"
-                        :title="file.name"
+                <!-- 只在沒有截圖時顯示文件上傳和聯網搜尋 -->
+                <template v-if="!hasScreenshot">
+                    <button
+                        @click="handleFileSelect"
+                        :disabled="disabled"
+                        class="file-btn"
+                        :class="{ 'has-file': selectedFiles.length > 0 }"
+                        :title="selectedFiles.length > 0 ? `已選擇 ${selectedFiles.length} 個檔案` : '上傳文件 (支援 TXT, MD, PDF, JSON, CSV)'"
                     >
-                        <span>{{ file.name }}</span>
-                        <button @click="removeFile(index)" class="remove-file">✕</button>
+                        📄
+                        <span v-if="selectedFiles.length > 0" class="file-count">{{ selectedFiles.length }}</span>
+                    </button>
+                    <button
+                        @click="webSearchEnabled = !webSearchEnabled"
+                        :disabled="disabled"
+                        class="web-search-btn"
+                        :class="{ 'active': webSearchEnabled }"
+                        :title="webSearchEnabled ? '關閉旅遊搜尋' : '開啟旅遊搜尋'"
+                    >
+                        🚆
+                    </button>
+
+                    <div v-if="selectedFiles.length > 0" class="file-list">
+                        <div 
+                            v-for="(file, index) in selectedFiles" 
+                            :key="index"
+                            class="file-tag"
+                            :title="file.name"
+                        >
+                            <span>{{ file.name }}</span>
+                            <button @click="removeFile(index)" class="remove-file">✕</button>
+                        </div>
                     </div>
-                </div>
+                </template>
             </div>
             <div class="right-actions">
                 <span class="char-count">{{ inputText.length }} / 1000 {{ charCountLabel }}</span>
@@ -85,6 +88,10 @@ export default {
         screenshot: {
             type: String,
             default: ''
+        },
+        hasScreenshot: {
+            type: Boolean,
+            default: false
         }
     },
     emits: ['update:modelValue', 'submit', 'extract-text'],

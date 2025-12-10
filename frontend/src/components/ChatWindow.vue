@@ -44,6 +44,7 @@
                         :placeholder="t('query.placeholder')"
                         :disabled="isLoading"
                         :charCountLabel="t('query.charCount')"
+                        :hasScreenshot="!!screenshot"
                         @submit="submit"
                     />
                 </div>
