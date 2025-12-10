@@ -112,7 +112,10 @@ export default {
             const trimmed = inputText.value.trim();
             if (!trimmed || props.disabled) return;
             
-            // 合併用戶輸入和所有檔案內容
+            // 保存原始用戶輸入（用於顯示）
+            const userInput = trimmed;
+            
+            // 合併用戶輸入和所有檔案內容（用於發送給 AI）
             let finalText = trimmed;
             
             if (selectedFiles.value.length > 0) {
@@ -123,15 +126,17 @@ export default {
                 });
             }
             
-            // 如果開啟聯網搜尋，添加標記
+            // 提交數據：text 是完整內容（給 AI），userInput 是用戶輸入（用於顯示）
             const submitData = {
                 text: finalText.slice(0, 10000),
+                userInput: userInput,
                 webSearch: webSearchEnabled.value
             };
             
             emit('submit', submitData);
             inputText.value = '';
             selectedFiles.value = [];
+            webSearchEnabled.value = false;
         };
 
         const handleFileSelect = async () => {

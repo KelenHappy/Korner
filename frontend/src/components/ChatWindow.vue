@@ -107,12 +107,14 @@ export default {
             // 支持舊格式（純文字）和新格式（對象）
             const text = typeof submitData === 'string' ? submitData : submitData.text;
             const webSearch = typeof submitData === 'object' ? submitData.webSearch : false;
+            const userInput = typeof submitData === 'object' && submitData.userInput ? submitData.userInput : text;
             
             if (!text || isLoading.value) return;
 
+            // 只顯示用戶輸入的文字，不顯示檔案內容
             messages.value.push({
                 role: 'user',
-                content: text + (webSearch ? ' 🌐' : ''),
+                content: userInput + (webSearch ? ' 🌐' : ''),
                 timestamp: new Date()
             });
 
