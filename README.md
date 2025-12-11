@@ -13,9 +13,6 @@ Korner is a lightweight Agentic AI desktop assistant that allows users to captur
 * **Floating Response Window**
   View AI responses in a movable, resizable window with options to copy, pin, or close the response.
 
-* **Multi-Platform Consistency**
-  Korner provides a consistent UI/UX experience across Windows and macOS, following native platform conventions.
-
 * **Versatile Use Cases**
   * Academic: Capture code snippets, charts, or lecture slides and receive explanations or summaries.
   * Work: Summarize meeting notes, generate agendas, or assist with project management.
@@ -57,7 +54,6 @@ winget install --id Gyan.FFmpeg --source winget
 * **Packaging:**
 
   * Windows: `.exe` with system tray icon
-  * macOS: Universal `.app` (Intel & Apple Silicon)
 
 ## Privacy and Security
 
@@ -85,7 +81,7 @@ Korner aims to provide a truly integrated AI assistant for desktop users. By red
 
 ## Demo
 
-https://hackmd.io/@carina2992/rJU3JG5eZl
+https://www.youtube.com/watch?v=28iCa3jkF10
 
 # Open-Source Credits
 
