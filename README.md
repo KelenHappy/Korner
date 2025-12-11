@@ -90,12 +90,7 @@ Thank you to the open-source community for making this tool possible!
 | Component                  | License                                 | Links                                                                 |
 |----------------------------|-----------------------------------------|-----------------------------------------------------------------------|
 | FFmpeg                     | LGPL v2.1 / GPL v2+                    | https://ffmpeg.org · https://github.com/FFmpeg/FFmpeg                 |
-| faster-whisper (Purfview standalone Windows build) | MIT                                   | https://github.com/Purfview/whisper-standalone-win                    |
+| whisper | MIT                                   | https://github.com/openai/whisper                    |
 | Qwen3-VL series models     | Tongyi Qianwen Research License (Apache-2.0 compatible) | https://huggingface.co/Qwen · https://github.com/QwenLM/Qwen3-VL      |
 | Ollama (for Qwen3-VL inference) | MIT                                   | https://ollama.com · https://github.com/ollama/ollama                 |
 
-All components comply with their licenses. Source code available at the links above.
-
-Big thanks to Alibaba (Qwen team), OpenAI (Whisper), and the Ollama contributors for sharing these tools freely!
-
-Made with ❤️ and open-source spirit in 2025.
