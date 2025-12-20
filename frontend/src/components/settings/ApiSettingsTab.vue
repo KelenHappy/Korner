@@ -5,12 +5,23 @@
         <div class="form-group">
             <label class="form-label">{{ t("settings.provider") }}</label>
             <select v-model="localSettings.apiProvider" class="form-select">
-                <option value="gptoss">🚀 AMD GPT-OSS-120B (推薦)</option>
+                <option value="ollama">🦙 Ollama (推薦)</option>
+                <option value="gptoss">🚀 AMD GPT-OSS-120B</option>
                 <option value="openai" disabled>OpenAI (已停用)</option>
                 <option value="anthropic" disabled>Anthropic (已停用)</option>
                 <option value="gemini" disabled>Google Gemini (已停用)</option>
-                <option value="custom" disabled>Custom (已停用)</option>
             </select>
+        </div>
+
+        <div class="form-group" v-if="localSettings.apiProvider === 'ollama'">
+            <label class="form-label">Ollama 端點</label>
+            <input
+                v-model="localSettings.ollamaEndpoint"
+                type="text"
+                class="form-input"
+                placeholder="http://127.0.0.1:11434"
+            />
+            <p class="form-hint">本地 Ollama 服務端點，使用 qwen3-vl:4b 模型</p>
         </div>
 
         <div class="form-group" v-if="localSettings.apiProvider === 'gptoss'">
@@ -22,7 +33,7 @@
             <p class="form-hint">{{ t("settings.endpointHint") }}</p>
         </div>
 
-        <div class="form-group" v-if="localSettings.apiProvider !== 'gptoss'">
+        <div class="form-group" v-if="localSettings.apiProvider !== 'gptoss' && localSettings.apiProvider !== 'ollama'">
             <label class="form-label">{{ t("settings.apiKey") }}</label>
             <div class="input-with-icon">
                 <input

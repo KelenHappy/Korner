@@ -86,11 +86,12 @@ export default {
         ]);
 
         const defaultSettings = {
-            apiProvider: 'openai',
+            apiProvider: 'ollama',
             apiKey: '',
             apiEndpoint: '',
             floatingIcon: '🌸',
-            language: 'zh-TW'
+            language: 'zh-TW',
+            ollamaEndpoint: 'http://127.0.0.1:11434'
         };
 
         const settings = reactive({

@@ -33,12 +33,12 @@ type App struct {
 
 // AppSettings stores user configuration
 type AppSettings struct {
-	APIProvider    string `json:"apiProvider"` // "gptoss", "openai", "anthropic", "gemini", "custom"
+	APIProvider    string `json:"apiProvider"` // "ollama", "gptoss", "openai", "anthropic", "gemini"
 	APIKey         string `json:"apiKey"`
 	APIEndpoint    string `json:"apiEndpoint"`
 	FloatingIcon   string `json:"floatingIcon"`
 	Language       string `json:"language"`       // "en" or "zh-TW"
-	OllamaEndpoint string `json:"ollamaEndpoint"` // Ollama server endpoint for OCR
+	OllamaEndpoint string `json:"ollamaEndpoint"` // Ollama server endpoint
 }
 
 // NewApp creates a new App application struct
@@ -50,9 +50,9 @@ func NewApp() *App {
 
 	app := &App{
 		settings: &AppSettings{
-			APIProvider:    "gptoss", // 默認使用 GPT-OSS-120B
+			APIProvider:    "ollama", // 默認使用 Ollama
 			APIKey:         "dummy-key",
-			APIEndpoint:    "http://210.61.209.139:45014/v1/", // 默認端點
+			APIEndpoint:    "http://210.61.209.139:45014/v1/", // GPT-OSS 端點
 			FloatingIcon:   "🌸",
 			Language:       "zh-TW",                     // 默認語言
 			OllamaEndpoint: "http://127.0.0.1:11434", // Ollama 端點
@@ -115,7 +115,7 @@ func (a *App) SaveSettings(settings AppSettings) error {
 func (a *App) GetSettings() AppSettings {
 	if a.settings == nil {
 		return AppSettings{
-			APIProvider:    "gptoss",
+			APIProvider:    "ollama",
 			APIKey:         "dummy-key",
 			APIEndpoint:    "http://210.61.209.139:45014/v1/",
 			FloatingIcon:   "🌸",
@@ -298,11 +298,11 @@ func (a *App) QueryLLM(query string, screenshotBase64 string, language string) (
 	log.Printf("[QueryLLM] Starting query with provider: %s", a.settings.APIProvider)
 	log.Printf("[QueryLLM] Query length: %d, Screenshot base64 length: %d", len(query), len(screenshotBase64))
 	
-	// If screenshot is provided, extract text using Ollama first
+	// If screenshot is provided and provider is NOT Ollama, extract text using Ollama first
 	var extractedText string
 	var shouldSendImage bool = false
 	
-	if screenshotBase64 != "" {
+	if screenshotBase64 != "" && a.settings.APIProvider != "ollama" {
 		log.Printf("[QueryLLM] Screenshot provided (length: %d), extracting text with Ollama...", len(screenshotBase64))
 		text, err := a.ExtractTextFromScreenshot(screenshotBase64)
 		if err != nil {
@@ -348,6 +348,19 @@ func (a *App) QueryLLM(query string, screenshotBase64 string, language string) (
 	}
 
 	switch a.settings.APIProvider {
+	case "ollama":
+		// Ollama 本地模型
+		endpoint := a.settings.OllamaEndpoint
+		if endpoint == "" {
+			endpoint = "http://127.0.0.1:11434"
+		}
+		model = "qwen3-vl:4b"
+		// Ollama 支持圖片，如果有截圖就發送
+		imageToSend := ""
+		if screenshotBase64 != "" {
+			imageToSend = screenshotBase64
+		}
+		result, err = ocr.QueryOllama(ctx, query, imageToSend, endpoint, language)
 	case "gptoss":
 		// GPT-OSS-120B (不支持圖片，只發送文字)
 		endpoint := a.settings.APIEndpoint
@@ -366,14 +379,17 @@ func (a *App) QueryLLM(query string, screenshotBase64 string, language string) (
 		}
 		result, err = llm.QueryGemini(ctx, query, imageToSend, a.settings.APIKey, language)
 	default:
-		// Default to GPT-OSS
-		endpoint := a.settings.APIEndpoint
+		// Default to Ollama
+		endpoint := a.settings.OllamaEndpoint
 		if endpoint == "" {
-			endpoint = "http://210.61.209.139:45014/v1/"
+			endpoint = "http://127.0.0.1:11434"
 		}
-		model = "gpt-oss-120b"
-		// Don't send image to GPT-OSS, only send extracted text
-		result, err = llm.QueryGPTOSS(ctx, query, "", a.settings.APIKey, endpoint, language)
+		model = "qwen3-vl:4b"
+		imageToSend := ""
+		if screenshotBase64 != "" {
+			imageToSend = screenshotBase64
+		}
+		result, err = ocr.QueryOllama(ctx, query, imageToSend, endpoint, language)
 	}
 
 	if err != nil {
