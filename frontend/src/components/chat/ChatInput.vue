@@ -28,9 +28,9 @@
                         :disabled="disabled"
                         class="web-search-btn"
                         :class="{ 'active': webSearchEnabled }"
-                        :title="webSearchEnabled ? '關閉旅遊搜尋' : '開啟旅遊搜尋'"
+                        :title="webSearchEnabled ? '關閉網路搜尋' : '開啟網路搜尋'"
                     >
-                        🚆
+                        🌐
                     </button>
 
                     <div v-if="selectedFiles.length > 0" class="file-list">
