@@ -125,7 +125,7 @@ func (a *App) GenerateMeetingSummary(audioPath string) (string, error) {
 		return "", err
 	}
 
-	// 2. 使用 Ollama 生成會議摘要
+	// 2. 使用 Ollama 生成會議摘要（不需要聯網）
 	summaryPrompt := meeting.GenerateSummaryPrompt(language, result.Transcription)
 
 	ollamaEndpoint := a.settings.OllamaEndpoint
@@ -133,7 +133,8 @@ func (a *App) GenerateMeetingSummary(audioPath string) (string, error) {
 		ollamaEndpoint = "http://127.0.0.1:11434"
 	}
 
-	summary, err := ocr.QueryOllamaWithWebSearch(ctx, summaryPrompt, ollamaEndpoint, language)
+	// 使用 QueryOllama 而非 QueryOllamaWithWebSearch，因為摘要不需要聯網
+	summary, err := ocr.QueryOllama(ctx, summaryPrompt, "", ollamaEndpoint, language)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate summary: %w", err)
 	}
